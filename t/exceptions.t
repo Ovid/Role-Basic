@@ -5,8 +5,6 @@ use Carp::Always;
 use lib 'lib', 't/lib';
 use Role::Basic ();
 
-#diag "unknown arguments to import list";
-#diag "Applying to instances";
 throws_ok { Role::Basic->_load_role('My::Example') }
     qr/Only roles defined with Role::Basic may be loaded/,
     'Trying to load non-roles should fail';

@@ -4,6 +4,8 @@ MANIFEST
 README
 lib/Role/Basic.pm
 t/00-load.t
+t/basic.t
+t/internals.t
 t/manifest.t
 t/pod-coverage.t
 t/pod.t

@@ -27,28 +27,56 @@ sub add_to_requirements {
 sub apply_roles_to_package {
     my ( $class, $package, @roles ) = @_;
     if ( $HAS_ROLES{$package} ) {
-        Carp::confess("with() called more than once for ($package)");
+        Carp::confess("with() may not be called more than once for $package");
     }
     while ( my $role = shift @roles ) {
         # will need to verify that they're actually a role!
-        _load_role($role);
+        $class->_load_role($role);
+        $class->_add_role_methods_to_package($role, $package);
     }
     $HAS_ROLES{$package} = 1;
 }
 
+sub _add_role_methods_to_package {
+    my ($class, $role, $package) = @_;
+    my $code_for = $class->_get_methods($role);
+
+    foreach my $method (keys %$code_for) {
+        no strict 'refs';
+        *{"${package}::$method"} = $code_for->{$method};
+    }
+}
+
 sub _get_methods {
-    my ($target) = @_;
-    $DB::single = 1;
+    my ( $class, $target ) = @_;
+
     my $stash = do { no strict 'refs'; \%{"${target}::"} };
 
-    my @methods =
-      map { local $_ = $_; s/^\*$target\:://; $_ }
+    my %methods =
+      map { local $_ = $_; my $code = *$_{CODE}; s/^\*$target\:://; $_ => $code }
       grep {
-             !( ref eq 'SCALAR' )
-          && *$_{CODE}
-          && $target eq _sub_package( *$_{CODE} )
+        !( ref eq 'SCALAR' )    # not a scalar
+          && *$_{CODE}          # actually have code
+          && _is_valid_method( $target, *$_{CODE} )
       } values %$stash;
-    return @methods;
+    return \%methods;
+}
+
+sub _is_valid_method {
+    my ( $target, $code ) = @_;
+
+    my $source = _sub_package($code);
+    # XXX There's a potential bug where some idiot could use Role::Basic to
+    # create exportable functions and those get exported into a role. That's
+    # far-fetched enough that I'm not worried about it.
+    return
+
+      # no imported methods
+      $target eq $source
+      ||
+
+      # unless we're a role and they're composed from another role
+      $IS_ROLE{$target} && $IS_ROLE{$source};
 }
 
 sub _sub_package {
@@ -80,7 +108,7 @@ sub import {
     }
     elsif (@_) {
         my $args = join ', ' => @_;    # more explicit than $"
-        Carp::confess("Unknown argument in import list: ($args)");
+        Carp::confess("Multiple or unknown argument(s) in import list: ($args)");
     }
 
     # this is a role
@@ -89,11 +117,26 @@ sub import {
     };
 }
 
+sub END {
+    use Data::Dumper::Simple;
+    $Data::Dumper::Indent   = 1;
+    $Data::Dumper::Sortkeys = 1;
+    print STDERR Dumper( %IS_ROLE, %REQUIRED_BY, %REQUIRES, %HAS_ROLES );
+}
+
 sub _load_role {
-    my $role = shift;
+    my ( $class, $role ) = @_;
     return 1 if $IS_ROLE{$role};
     ( my $filename = $role ) =~ s/::/\//g;
     require "${filename}.pm";
+    no strict 'refs';
+    my $requires = $role->can('requires');
+
+    if ( !$requires || $class ne _sub_package($requires) ) {
+        Carp::confess(
+            "Only roles defined with $class may be loaded with _load_role");
+    }
+    # die if not role? XXX
     $IS_ROLE{$role} = 1;
     return 1;
 }

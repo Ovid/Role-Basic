@@ -443,7 +443,21 @@ Or using a different method resolution order (MRO) such as with L<Class::C3>
 or friends. We alert you to this limitation but make no attempt to address it.
 This helps to keep this module simple, a primary design goal.
 
-=item * Safety
+=item * Composition Safety
+
+In addition to the normal conflict resolution, only one C<with> statement is
+allowed:
+
+    package Foo;
+    use Role::Basic;
+    with 'Some::Role';
+    with 'Another::Role'; # boom!
+
+This is because when you have more than one C<with> statement, the latter will
+ignore conflicts with the first. We could work around this, but this would
+be significantly different from the behavior of L<Moose>.
+
+=item * Override Safety
 
 By default, we aim to behave like L<Moose::Role>.  This means that if a class
 consuming a role has a method with the same name the role provides, the class

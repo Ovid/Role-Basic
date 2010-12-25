@@ -30,20 +30,40 @@ sub apply_roles_to_package {
         Carp::confess("with() may not be called more than once for $target");
     }
 
+    my %provided_by;
     my %requires;
     my $target_methods = $class->_get_methods($target);
     while ( my $role = shift @roles ) {
         # will need to verify that they're actually a role!
         $class->_load_role($role);
-        $class->_add_role_methods_to_target($role, $target, $target_methods);
+        my $role_methods = $class->_add_role_methods_to_target($role, $target, $target_methods);
         push @{ $HAS_ROLES{$target} } => $role;
         
         foreach my $method (@{ $REQUIRED_BY{$role} }) {
             push @{ $requires{$method} } => $role;
         }
+        foreach my $method (@$role_methods) {
+            push @{ $provided_by{$method} } => $role;
+        }
     }
 
+    $class->_check_conflicts($target, \%provided_by);
     $class->_check_requirements($target, \%requires);
+}
+
+sub _check_conflicts {
+    my ($class, $target, $provided_by) = @_;
+    my @errors;
+    while ( my ( $method, $roles ) = each %$provided_by ) {
+        if ( @$roles > 1 ) {
+            my $roles = join " and " => @$roles;
+            push @errors =>
+"Due to method name conflics in $roles, the method '$method' must be included or excluded in $target";
+        }
+    }
+    if ( my $errors = join "\n" => @errors ) {
+        Carp::confess($errors);
+    }
 }
 
 sub _check_requirements {
@@ -84,6 +104,7 @@ sub _add_role_methods_to_target {
         }
         *{"${target}::$method"} = $code_for->{$method};
     }
+    return [ keys %$code_for ];
 }
 
 sub _get_methods {
@@ -183,200 +204,6 @@ sub _load_role {
 
 1;
 __END__
-our %INFO;
-our %APPLIED_TO;
-our %COMPOSED;
-
-
-
-
-sub import {
-    my $class  = $_[0];
-    my $target = caller;
-    if ( 'with' eq ( $_[1] || '' ) ) {
-        return if $INFO{$target};    # already exported into this package
-        *{ _getglob "${target}::with" } = sub {
-            die "Only one role supported at a time by with" if @_ > 1;
-            $class->apply_role_to_package( $target, $_[0] );
-        };
-        return;
-    }
-    strictures->import;
-    my $stash = do { no strict 'refs'; \%{"${target}::"} };
-
-    *{ _getglob "${target}::requires" } = sub {
-        push @{ $INFO{$target}{requires} ||= [] }, @_;
-    };
-    # grab all *non-constant* (ref eq 'SCALAR') subs present
-    # in the symbol table and store their refaddrs (no need to forcibly
-    # inflate constant subs into real subs) - also add '' to here (this
-    # is used later)
-    @{ $INFO{$target}{not_methods} = {} }{ '',
-        map { *$_{CODE} || () } grep !( ref eq 'SCALAR' ), values %$stash } =
-      ();
-
-    # a role does itself
-    $APPLIED_TO{$target} = { $target => undef };
-}
-
-sub apply_role_to_package {
-    my ( $me, $to, $role ) = @_;
-
-    _load_module($role);
-
-    Carp::confess("Role::Basic will only apply roles to classes") if ref($to);
-    Carp::confess("${role} is not a Role::Basic")
-      unless my $info = $INFO{$role};
-
-    $me->_check_requires( $to, $role, @{ $info->{requires} || [] } );
-    $me->_install_methods( $to, $role );
-
-    # only add does() method to classes and only if they don't have one
-    if ( not $INFO{$to} and not $to->can('does') ) {
-        *{ _getglob "${to}::does" } = \&does_role;
-    }
-
-    # copy our role list into the target's
-    @{ $APPLIED_TO{$to} ||= {} }{ keys %{ $APPLIED_TO{$role} } } = ();
-}
-
-sub _check_requires {
-    my ( $me, $to, $name, @requires ) = @_;
-    if ( my @requires_fail = grep !$to->can($_), @requires ) {
-
-        # role -> role, add to requires, role -> class, error out
-        if ( my $to_info = $INFO{$to} ) {
-            push @{ $to_info->{requires} ||= [] }, @requires_fail;
-        }
-        else {
-            die "Can't apply ${name} to ${to} - missing "
-              . join( ', ', @requires_fail );
-        }
-    }
-}
-
-sub _install_methods {
-    my ( $me, $to, $role ) = @_;
-
-    my $info = $INFO{$role};
-
-    my $methods = $me->_concrete_methods_of($role);
-
-    # grab target symbol table
-    my $stash = do { no strict 'refs'; \%{"${to}::"} };
-
-    # determine already extant methods of target
-    my %has_methods;
-    @has_methods{
-        grep +(
-            ( ref( $stash->{$_} ) eq 'SCALAR' ) || ( *{ $stash->{$_} }{CODE} )
-        ),
-        keys %$stash
-      }
-      = ();
-
-    foreach my $i ( grep !exists $has_methods{$_}, keys %$methods ) {
-        no warnings 'once';
-        *{ _getglob "${to}::${i}" } = $methods->{$i};
-    }
-}
-
-sub _concrete_methods_of {
-    my ( $me, $role ) = @_;
-    my $info = $INFO{$role};
-    $info->{methods} ||= do {
-
-        # grab role symbol table
-        my $stash = do { no strict 'refs'; \%{"${role}::"} };
-        my $not_methods = $info->{not_methods};
-        +{
-
-            # grab all code entries that aren't in the not_methods list
-            map {
-                my $code = *{ $stash->{$_} }{CODE};
-
-                # rely on the '' key we added in import for "no code here"
-                exists $not_methods->{ $code || '' } ? () : ( $_ => $code )
-              } grep !( ref( $stash->{$_} ) eq 'SCALAR' ),
-            keys %$stash
-        };
-    };
-}
-
-1;
-__END__
-
-sub apply_roles_to_object {
-    my ( $me, $object, @roles ) = @_;
-    die "No roles supplied!" unless @roles;
-    my $class = ref($object);
-    bless( $object, $me->create_class_with_roles( $class, @roles ) );
-    $object;
-}
-
-sub create_class_with_roles {
-    my ( $me, $superclass, @roles ) = @_;
-
-    die "No roles supplied!" unless @roles;
-
-    my $new_name =
-      join( '+', $superclass, my $compose_name = join '+', @roles );
-    return $new_name if $COMPOSED{class}{$new_name};
-
-    foreach my $role (@roles) {
-        _load_module($role);
-        die "${role} is not a Role::Basic" unless my $info = $INFO{$role};
-    }
-
-    if ( $] >= 5.010 ) {
-        require mro;
-    }
-    else {
-        require MRO::Compat;
-    }
-
-    my @composable = map $me->_composable_package_for($_), reverse @roles;
-
-    *{ _getglob("${new_name}::ISA") } = [ @composable, $superclass ];
-
-    my @info = map +( $INFO{$_} ? $INFO{$_} : () ), @roles;
-
-    $me->_check_requires(
-        $new_name, $compose_name,
-        do { my %h; @h{ map @{ $_->{requires} || [] }, @info } = (); keys %h }
-    );
-
-    *{ _getglob "${new_name}::does" } = \&does_role
-      unless $new_name->can('does');
-
-    @{ $APPLIED_TO{$new_name} ||= {} }{ map keys %{ $APPLIED_TO{$_} },
-        @roles } = ();
-
-    $COMPOSED{class}{$new_name} = 1;
-    return $new_name;
-}
-
-sub _composable_package_for {
-    my ( $me, $role ) = @_;
-    my $composed_name = 'Role::Basic::_COMPOSABLE::' . $role;
-    return $composed_name if $COMPOSED{role}{$composed_name};
-    $me->_install_methods( $composed_name, $role );
-    my $base_name = $composed_name . '::_BASE';
-    *{ _getglob("${composed_name}::ISA") } = [$base_name];
-    my @mod_base;
-
-    eval( my $code = join "\n", "package ${base_name};", @mod_base );
-    die "Evaling failed: $@\nTrying to eval:\n${code}" if $@;
-    $COMPOSED{role}{$composed_name} = 1;
-    return $composed_name;
-}
-
-sub methods_provided_by {
-    my ( $me, $role ) = @_;
-    die "${role} is not a Role::Basic" unless my $info = $INFO{$role};
-    ( keys %{ $me->_concrete_methods_of($role) },
-        @{ $info->{requires} || [] } );
-}
 
 sub does_role {
     my ( $proto, $role ) = @_;

@@ -25,7 +25,7 @@ package My::Bad::Import;
 use Role::Basic 'wtih';  # with, not 'wtih'
 END_PACKAGE
 like $@, qr/\QMultiple or unknown argument(s) in import list: (wtih)/,
-'Trying to use Role::Basic with an import argument other than "with" shoudl fail';
+'Trying to use Role::Basic with an import argument other than "with" should fail';
 
 eval <<'END_PACKAGE';
 package My::Bad::Import; 

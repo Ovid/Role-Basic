@@ -31,10 +31,11 @@ sub apply_roles_to_package {
     }
 
     my %requires;
+    my $target_methods = $class->_get_methods($target);
     while ( my $role = shift @roles ) {
         # will need to verify that they're actually a role!
         $class->_load_role($role);
-        $class->_add_role_methods_to_package($role, $target);
+        $class->_add_role_methods_to_target($role, $target, $target_methods);
         push @{ $HAS_ROLES{$target} } => $role;
         
         foreach my $method (@{ $REQUIRED_BY{$role} }) {
@@ -63,16 +64,25 @@ sub _check_requirements {
     }
 }
 
-sub _add_role_methods_to_package {
-    my ($class, $role, $package) = @_;
+sub _add_role_methods_to_target {
+    my ($class, $role, $target, $target_methods) = @_;
     my $code_for = $class->_get_methods($role);
-
 
     # XXX Apply roles to roles!
 
     foreach my $method (keys %$code_for) {
         no strict 'refs';
-        *{"${package}::$method"} = $code_for->{$method};
+
+        if ( exists $target_methods->{$method} ) {
+            if ( $ENV{PERL_ROLE_OVERRIDE_DIE} ) {
+                Carp::confess("Role '$role' not overriding method '$method' in '$target'");
+            }
+            if ( $ENV{PERL_ROLE_OVERRIDE_WARN} ) {
+                Carp::carp("Role '$role' not overriding method '$method' in '$target'");
+            }
+            next;
+        }
+        *{"${target}::$method"} = $code_for->{$method};
     }
 }
 
@@ -466,8 +476,8 @@ community and the "silent" behaviour has won. However, there are those who
 prefer that they don't have their methods silently ignored. We provide two
 optional environment variables to handle this:
 
-    $ENV{ROLE_BASIC_OVERRIDE_WARN}
-    $ENV{ROLE_BASIC_OVERRIDE_DIE}
+    $ENV{PERL_ROLE_OVERRIDE_WARN}
+    $ENV{PERL_ROLE_OVERRIDE_DIE}
 
 If you prefer, you can set one of those to true and a class overridding a
 role's method will C<warn> or C<die>, as appropriate.  As you might expect,

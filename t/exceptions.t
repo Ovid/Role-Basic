@@ -14,6 +14,7 @@ package My::Bad::MultipleWith;
 use Role::Basic 'with';
 with 'My::Does::Basic';
 with 'My::Does::Basic';  # can't use with() more than once
+sub turbo_charger {}
 END_PACKAGE
 like $@, qr/with\(\) may not be called more than once for My::Bad::MultipleWith/,
     'Trying to use with() more than once in a package should fail';
@@ -32,4 +33,11 @@ END_PACKAGE
 like $@, qr/\QMultiple or unknown argument(s) in import list: (with, this)/,
     'Trying to use Role::Basic multiple arguments to the import list should fail';
 
+eval <<'END_PACKAGE';
+package My::Bad::Requirement;
+use Role::Basic 'with';
+with 'My::Does::Basic'; # requires turbo_charger
+END_PACKAGE
+like $@, qr/'My::Does::Basic' requires the method 'turbo_charger' to be implemented by 'My::Bad::Requirement'/,
+    'Trying to use with() more than once in a package should fail';
 done_testing;

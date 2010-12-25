@@ -18,28 +18,57 @@ my %HAS_ROLES;
 sub add_to_requirements {
     my ( $class, $role, @methods ) = @_;
 
-    $REQUIRES{$role} = \@methods;
+    $REQUIRED_BY{$role} = \@methods;
     foreach my $method (@methods) {
-        $REQUIRED_BY{$method}{$role} = 1;
+        $REQUIRES{$method}{$role} = 1;
     }
 }
 
 sub apply_roles_to_package {
-    my ( $class, $package, @roles ) = @_;
-    if ( $HAS_ROLES{$package} ) {
-        Carp::confess("with() may not be called more than once for $package");
+    my ( $class, $target, @roles ) = @_;
+    if ( $HAS_ROLES{$target} ) {
+        Carp::confess("with() may not be called more than once for $target");
     }
+
+    my %requires;
     while ( my $role = shift @roles ) {
         # will need to verify that they're actually a role!
         $class->_load_role($role);
-        $class->_add_role_methods_to_package($role, $package);
+        $class->_add_role_methods_to_package($role, $target);
+        push @{ $HAS_ROLES{$target} } => $role;
+        
+        foreach my $method (@{ $REQUIRED_BY{$role} }) {
+            push @{ $requires{$method} } => $role;
+        }
     }
-    $HAS_ROLES{$package} = 1;
+
+    $class->_check_requirements($target, \%requires);
+}
+
+sub _check_requirements {
+    my ( $class, $target, $requires ) = @_;
+
+    # we return if the target is a role because requirements can be deferred
+    # until final composition
+    return if $IS_ROLE{$target};
+    my @errors;
+    foreach my $method (keys %$requires) {
+        unless ( $target->can($method) ) {
+            my $roles = join '|' => @{ $requires->{$method} };
+            push @errors => "'$roles' requires the method '$method' to be implemented by '$target'";
+        }
+    }
+    if (@errors) {
+        Carp::confess(join "\n" => @errors);
+    }
 }
 
 sub _add_role_methods_to_package {
     my ($class, $role, $package) = @_;
     my $code_for = $class->_get_methods($role);
+
+
+    # XXX Apply roles to roles!
 
     foreach my $method (keys %$code_for) {
         no strict 'refs';
@@ -110,11 +139,12 @@ sub import {
         my $args = join ', ' => @_;    # more explicit than $"
         Carp::confess("Multiple or unknown argument(s) in import list: ($args)");
     }
-
-    # this is a role
-    *{ _getglob "${target}::requires" } = sub {
-        $class->add_to_requirements($target, @_);
-    };
+    else {
+        $IS_ROLE{$target} = 1;
+        *{ _getglob "${target}::requires" } = sub {
+            $class->add_to_requirements($target, @_);
+        };
+    }
 }
 
 sub END {
@@ -371,6 +401,109 @@ Version 0.01
 =head1 SUBROUTINES/METHODS
 
 =cut
+
+=head1 DESIGN GOALS AND LIMITATIONS
+
+There are two overriding design goals for C<Role::Basic>: B<simplicity> and
+B<safety>.  We make it a bit harder to shoot yourself in the foot and we aim to
+keep the code as simple as possible.  Feature requests are welcomed, but will
+not be acted upon if they violate either of these two design goals.
+
+Thus, if you need something which C<Role::Basic> does not support, you're
+strongly encouraged to consider L<Moose> or L<Mouse>.
+
+The following list details the outcomes of this module's goals.
+
+=over 4
+
+=item * Basic role support
+
+This includes composing into your class, composing roles from other roles,
+roles declaring requirements and conflict resolution.
+
+=item * Moose-like syntax
+
+To ease migration difficulties, we use a Moose-like syntax. If you wish to
+upgrade to Moose later, or find others on your project already familiar with
+Moose, this should make C<Role::Basic> easier to learn.
+
+=item * No handling of SUPER:: bug
+
+A well-known bug in OO Perl is that a SUPER:: method is invoked against the class
+its declared in, not against the class of the invocant. Handling this properly
+generally involves eval'ing a method directly into the correct package:
+
+    eval <<"END_METHOD";
+    package $some_package;
+
+    sub some_method { ... }
+    END_METHOD
+
+Or using a different method resolution order (MRO) such as with L<Class::C3>
+or friends. We alert you to this limitation but make no attempt to address it.
+This helps to keep this module simple, a primary design goal.
+
+=item * Safety
+
+By default, we aim to behave like L<Moose::Role>.  This means that if a class
+consuming a role has a method with the same name the role provides, the class
+I<silently> wins.  This has been a somewhat contentious issue in the C<Moose>
+community and the "silent" behaviour has won. However, there are those who
+prefer that they don't have their methods silently ignored. We provide two
+optional environment variables to handle this:
+
+    $ENV{ROLE_BASIC_OVERRIDE_WARN}
+    $ENV{ROLE_BASIC_OVERRIDE_DIE}
+
+If you prefer, you can set one of those to true and a class overridding a
+role's method will C<warn> or C<die>, as appropriate.  As you might expect,
+you can handle this with normal role behaviour or exclusion or aliasing.
+
+    package My::Class;
+    use Role::Basic 'with';
+    with 'My::Role' => { -excludes => 'conflicting_method' };
+
+From your author's email exchanges with the authors of the original traits
+paper (referenced here with permission), the "class silently wins" behaviour
+was not intended.  About this, Dr. Andrew P. Black wrote the following:
+
+    Yes, it is really important that a programmer can see clearly when a trait
+    method is being overridden -- just as it is important that it is clear
+    when an inherited method is being overridden.
+
+    In Smalltalk, where a program is viewed as a graph of objects, the obvious
+    solution to this problem is to provide an adequate tool to show the
+    programmer interesting properties of the program.  The original traits
+    browser did this for Smalltalk; the reason that we implemented it is that
+    traits were really NOT a good idea (that is,they were not very usable or
+    maintainable) without it.  Since then, the same sort of "virtual
+    protocols" have been built into the browser for other properties, like
+    "overridden methods".
+
+Note that those are provided as environment variables and not as syntax in the
+code itself to help keep the code closer to the L<Moose> syntax.
+
+=item * No instance application
+
+C<Role::Basic> does not support applying roles to object instances.
+
+=item * No method modifiers
+
+These have been especially problematic.  Consider a "before" modifier which
+multiplies a value by 2 and another before modifier which divides a value by
+3. The order in which those modifiers are applied becomes extremely important.
+and role-consumption is no longer entirely declarative, but becomes partially
+procedural. This causes enough problems that on Sep 14, 2010 on the
+Moose mailing list, Stevan Little wrote:
+
+    I totally agree [with the described application order problems], and if I
+    had to do it over again, I would not have allowed method modifiers in
+    roles. They ruin the unordered-ness of roles and bring about edge cases
+    like this that are not so easily solved.
+
+Thus, C<Role::Basic> does not support method modifiers.
+
+=back
 
 =head1 AUTHOR
 

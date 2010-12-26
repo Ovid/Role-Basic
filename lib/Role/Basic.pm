@@ -251,9 +251,11 @@ sub END {
 sub _load_role {
     my ( $class, $role ) = @_;
     return 1 if $IS_ROLE{$role};
-    ( my $filename = $role ) =~ s/::/\//g;
-    require "${filename}.pm";
-    no strict 'refs';
+    unless ( $role->can('can') ) {
+        ( my $filename = $role ) =~ s/::/\//g;
+        require "${filename}.pm";
+        no strict 'refs';
+    }
     my $requires = $role->can('requires');
 
     if ( !$requires || $class ne _sub_package($requires) ) {
@@ -261,7 +263,6 @@ sub _load_role {
             "Only roles defined with $class may be loaded with _load_role");
     }
 
-    # die if not role? XXX
     $IS_ROLE{$role} = 1;
     return 1;
 }

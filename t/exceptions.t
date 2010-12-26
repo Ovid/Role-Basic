@@ -5,6 +5,18 @@ use Carp::Always;
 use lib 'lib', 't/lib';
 require Role::Basic;
 
+{
+    package My::Does::Basic;
+
+    use Role::Basic;
+
+    requires 'turbo_charger';
+
+    sub conflict {
+        return "My::Does::Basic::conflict";
+    }
+}
+
 throws_ok { Role::Basic->_load_role('My::Example') }
 qr/Only roles defined with Role::Basic may be loaded/,
   'Trying to load non-roles should fail';
@@ -50,10 +62,10 @@ qr/'My::Does::Basic' requires the method 'turbo_charger' to be implemented by 'M
     use Role::Basic 'with';
     with 'My::Does::Basic'; # requires turbo_charger
     sub turbo_charger {}
-    sub no_conflict {}
+    sub conflict {}
     END_PACKAGE
     like $@,
-qr/Role 'My::Does::Basic' not overriding method 'no_conflict' in 'My::Bad::Override'/,
+qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override'/,
 'Trying to override methods with roles should die if PERL_ROLE_OVERRIDE_DIE is set';
 }
 
@@ -62,7 +74,7 @@ qr/Role 'My::Does::Basic' not overriding method 'no_conflict' in 'My::Bad::Overr
     {
         package My::Conflict;
         use Role::Basic;
-        sub no_conflict {};
+        sub conflict {};
     }
     package My::Bad::MethodConflicts;
     use Role::Basic 'with';
@@ -70,7 +82,7 @@ qr/Role 'My::Does::Basic' not overriding method 'no_conflict' in 'My::Bad::Overr
     sub turbo_charger {}
     END_PACKAGE
     like $@,
-    qr/Due to method name conflicts in My::Does::Basic and My::Conflict, the method 'no_conflict' must be included or excluded in My::Bad::MethodConflicts/,
+    qr/Due to method name conflicts in My::Does::Basic and My::Conflict, the method 'conflict' must be included or excluded in My::Bad::MethodConflicts/,
       'Trying to use multiple roles with the same method should fail';
 }
 
@@ -80,12 +92,12 @@ qr/Role 'My::Does::Basic' not overriding method 'no_conflict' in 'My::Bad::Overr
     {
         package My::Conflict2;
         use Role::Basic;
-        sub no_conflict {};
+        sub conflict {};
     }
     package My::Bad::MethodConflicts2;
     use Role::Basic 'with';
     with 'My::Does::Basic',
-         'My::Conflict2' => { -aliases => { no_conflict => 'turbo_charger' } };
+         'My::Conflict2' => { -aliases => { conflict => 'turbo_charger' } };
     sub turbo_charger {}
     END_PACKAGE
     like $@,
@@ -98,11 +110,11 @@ qr/Role 'My::Does::Basic' not overriding method 'no_conflict' in 'My::Bad::Overr
     {
         package My::Does::AnotherConflict;
         use Role::Basic;
-        sub no_conflict {};
+        sub conflict {};
     }
     package My::Bad::NoMethodConflicts;
     use Role::Basic 'with';
-    with 'My::Does::Basic'           => { -excludes => 'no_conflict' },
+    with 'My::Does::Basic'           => { -excludes => 'conflict' },
          'My::Does::AnotherConflict';
     sub turbo_charger {}
     END_PACKAGE

@@ -35,8 +35,17 @@ sub apply_roles_to_package {
     my $target_methods = $class->_get_methods($target);
     while ( my $role = shift @roles ) {
         # will need to verify that they're actually a role!
+
+        my $conflict_handlers = shift @roles if ref $roles[0];
         $class->_load_role($role);
-        my $role_methods = $class->_add_role_methods_to_target($role, $target, $target_methods);
+
+        # XXX this is awful. Don't tell anyone I wrote this
+        my $role_methods = $class->_add_role_methods_to_target(
+            $role, 
+            $target, 
+            $target_methods,
+            $conflict_handlers
+        );
         push @{ $HAS_ROLES{$target} } => $role;
         
         foreach my $method (@{ $REQUIRED_BY{$role} }) {
@@ -58,7 +67,7 @@ sub _check_conflicts {
         if ( @$roles > 1 ) {
             my $roles = join " and " => @$roles;
             push @errors =>
-"Due to method name conflics in $roles, the method '$method' must be included or excluded in $target";
+"Due to method name conflicts in $roles, the method '$method' must be included or excluded in $target";
         }
     }
     if ( my $errors = join "\n" => @errors ) {
@@ -85,12 +94,36 @@ sub _check_requirements {
 }
 
 sub _add_role_methods_to_target {
-    my ($class, $role, $target, $target_methods) = @_;
+    my ($class, $role, $target, $target_methods, $conflict_handlers) = @_;
     my $code_for = $class->_get_methods($role);
+    
+    # figure out which methods to exclude
+    my $excludes = delete $conflict_handlers->{'-excludes'} || [];
+    $excludes = [$excludes] unless ref $excludes;
+    unless ('ARRAY' eq ref $excludes) {
+        Carp::confess("Argument to '-excludes' in package $target must be a scalar or array reference");
+    }
+    my %is_excluded = map { $_ => 1 } @$excludes;
+
+    # rename methods to alias
+    my $aliases  = delete $conflict_handlers->{'-aliases'};
+    $aliases ||= {};
+    unless ('HASH' eq ref $aliases) {
+        Carp::confess("Argument to '-aliases' in package $target must be a hash reference");
+    }
+    while ( my ($old_method, $new_method) = each %$aliases) {
+        if (exists $code_for->{$new_method}) {
+            Carp::confess("Cannot alias '$old_method' to existing method '$new_method' in $role");
+        }
+        else {
+            $code_for->{$new_method} = delete $code_for->{$old_method};
+        }
+    }
 
     # XXX Apply roles to roles!
 
     foreach my $method (keys %$code_for) {
+        next if $is_excluded{$method};
         no strict 'refs';
 
         if ( exists $target_methods->{$method} ) {
@@ -102,6 +135,9 @@ sub _add_role_methods_to_target {
             }
             next;
         }
+
+        # XXX we're going to handle this ourselves
+        no warnings 'redefine';
         *{"${target}::$method"} = $code_for->{$method};
     }
     return [ keys %$code_for ];
@@ -160,10 +196,11 @@ sub import {
     my $class = shift;
     my $target = caller;
 
+    *{ _getglob "${target}::with" } = sub {
+        $class->apply_roles_to_package( $target, @_ );
+    };
     if ( 1 == @_ && 'with' eq $_[0] ) {
-        *{ _getglob "${target}::with" } = sub {
-            $class->apply_roles_to_package( $target, @_ );
-        };
+        # this is a class which is consuming roles
         return;
     }
     elsif (@_) {

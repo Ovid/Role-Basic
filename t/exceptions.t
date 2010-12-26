@@ -28,7 +28,7 @@ like $@, qr/\QMultiple or unknown argument(s) in import list: (wtih)/,
 'Trying to use Role::Basic with an import argument other than "with" should fail';
 
 eval <<'END_PACKAGE';
-package My::Bad::Import; 
+package My::Bad::MultipleArgsToImport; 
 use Role::Basic qw(with this);
 END_PACKAGE
 like $@, qr/\QMultiple or unknown argument(s) in import list: (with, this)/,
@@ -57,4 +57,35 @@ qr/Role 'My::Does::Basic' not overriding method 'no_conflict' in 'My::Bad::Overr
 'Trying to override methods with roles should die if PERL_ROLE_OVERRIDE_DIE is set';
 }
 
+{
+    eval <<'    END_PACKAGE';
+    {
+        package My::Conflict;
+        use Role::Basic;
+        sub no_conflict {};
+    }
+    package My::Bad::MethodConflicts;
+    use Role::Basic 'with';
+    with qw(My::Does::Basic My::Conflict);
+    sub turbo_charger {}
+    END_PACKAGE
+    like $@,
+    qr/Due to method name conflicts in My::Does::Basic and My::Conflict, the method 'no_conflict' must be included or excluded in My::Bad::MethodConflicts/,
+      'Trying to use multiple roles with the same method should fail';
+}
+
+{
+    eval <<'    END_PACKAGE';
+    package My::Bad::NoMethodConflicts;
+    use Role::Basic 'with';
+    with 'My::Does::Basic' => {
+        -excludes => 'no_conflict',
+    },
+    'My::Conflict';
+    sub turbo_charger {}
+    END_PACKAGE
+    like $@,
+    qr/Due to method name conflicts in My::Does::Basic and My::Conflict, the method 'no_conflict' must be included or excluded in My::Bad::NoMethodConflicts/,
+      'Trying to use multiple roles with the same method should fail';
+}
 done_testing;

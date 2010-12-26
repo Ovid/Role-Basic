@@ -3,7 +3,7 @@
 use Test::Most;
 use Carp::Always;
 use lib 'lib', 't/lib';
-use Role::Basic ();
+require Role::Basic;
 
 throws_ok { Role::Basic->_load_role('My::Example') }
 qr/Only roles defined with Role::Basic may be loaded/,
@@ -41,7 +41,7 @@ with 'My::Does::Basic'; # requires turbo_charger
 END_PACKAGE
 like $@,
 qr/'My::Does::Basic' requires the method 'turbo_charger' to be implemented by 'My::Bad::Requirement'/,
-  'Trying to use with() more than once in a package should fail';
+  'Trying to use a role without providing required methods should fail';
 
 {
     local $ENV{PERL_ROLE_OVERRIDE_DIE} = 1;
@@ -75,17 +75,37 @@ qr/Role 'My::Does::Basic' not overriding method 'no_conflict' in 'My::Bad::Overr
 }
 
 {
+    local $ENV{PERL_ROLE_OVERRIDE_DIE} = 1;
     eval <<'    END_PACKAGE';
-    package My::Bad::NoMethodConflicts;
+    {
+        package My::Conflict2;
+        use Role::Basic;
+        sub no_conflict {};
+    }
+    package My::Bad::MethodConflicts2;
     use Role::Basic 'with';
-    with 'My::Does::Basic' => {
-        -excludes => 'no_conflict',
-    },
-    'My::Conflict';
+    with 'My::Does::Basic',
+         'My::Conflict2' => { -aliases => { no_conflict => 'turbo_charger' } };
     sub turbo_charger {}
     END_PACKAGE
     like $@,
-    qr/Due to method name conflicts in My::Does::Basic and My::Conflict, the method 'no_conflict' must be included or excluded in My::Bad::NoMethodConflicts/,
-      'Trying to use multiple roles with the same method should fail';
+    qr/\QRole 'My::Conflict2' not overriding method 'turbo_charger' in 'My::Bad::MethodConflicts2'/,
+      'Trying to alias a conflicting method to an existing one in the package should fail if PERL_ROLE_OVERRIDE_DIE is set';
+}
+
+{
+    eval <<'    END_PACKAGE';
+    {
+        package My::Does::AnotherConflict;
+        use Role::Basic;
+        sub no_conflict {};
+    }
+    package My::Bad::NoMethodConflicts;
+    use Role::Basic 'with';
+    with 'My::Does::Basic'           => { -excludes => 'no_conflict' },
+         'My::Does::AnotherConflict';
+    sub turbo_charger {}
+    END_PACKAGE
+    ok !$@, 'Excluding role methods should succeed' or diag $@;
 }
 done_testing;

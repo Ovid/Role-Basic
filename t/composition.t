@@ -2,7 +2,7 @@
 
 use Test::Most;
 use Carp::Always;
-use lib 'lib', 't/lib';
+use lib 'lib';
 require Role::Basic;
 
 {

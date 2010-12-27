@@ -54,6 +54,7 @@ use Role::Basic 'with';
 with qw(
     My::Does::Basic3
 );
+sub new { bless {} => shift }
 sub turbo_charger {}
 END_PACKAGE
 ok !$@, 'We should be able to use roles which consume roles'
@@ -71,5 +72,14 @@ ok My::Class2->DOES('My::Does::Basic2'),
   '... and should do roles which its roles consumes';
 ok !My::Class2->DOES('My::Does::Basic1'),
   '... but not roles which it never consumed';
+
+my $object = My::Class2->new;
+can_ok $object, 'DOES';
+ok $object->DOES('My::Does::Basic3'), 'An instance DOES roles which its class consumes';
+ok $object->DOES('My::Does::Basic2'),
+  '... and should do roles which its roles consumes';
+ok !$object->DOES('My::Does::Basic1'),
+  '... but not roles which it never consumed';
+
 
 done_testing;

@@ -24,7 +24,8 @@ sub import {
     };
     # everybody gets 'with' and 'DOES'
     *{ _getglob "${target}::DOES" } = sub {
-        my ( $class, $role ) = @_;
+        my ( $proto, $role ) = @_;
+        my $class = ref $proto || $proto;
         return $HAS_ROLES{$class}{$role};
     };
     if ( 1 == @_ && 'with' eq $_[0] ) {
@@ -284,14 +285,6 @@ sub _load_role {
 
     $IS_ROLE{$role} = 1;
     return 1;
-}
-
-1;
-__END__
-
-sub does_role {
-    my ( $proto, $role ) = @_;
-    return exists $APPLIED_TO{ ref($proto) || $proto }{$role};
 }
 
 1;

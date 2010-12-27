@@ -334,9 +334,12 @@ L<Class::Trait>, but it has a funky syntax and the maintainer's deprecated it
 in favor of L<Moose::Role> and you really don't care that it handles
 overloading, instance application or has a workaround for the SUPER:: bug.
 You think a meta-object protocol sounds nifty, but you don't understand it.
-Maybe you're not sure you want the syntactic sugar for object declaration. You
-just want good, old-fashioned roles which let you separate class
-responsibility from code reuse.
+Maybe you're not sure you want the syntactic sugar for object declaration.
+Maybe you've convinced your colleagues that roles are a good idea but they're
+leery of dragging in Moose (your author has had this happen more than once and
+heard of others making the same complaint). Sometimes you just want good
+old-fashioned roles which let you separate class responsibility from code
+reuse.
 
 Whatever your reasons, this is the module you're looking for. It only provides
 roles and its major design goals are safety and simplicity.  It also aims to
@@ -345,17 +348,22 @@ upgrade, there will be minimal pain.
 
 =head1 DECLARING A ROLE
 
-To declare the current package as a role, simple add the following line
+To declare the current package as a role, simply add the following line
 to the package:
 
     use Role::Basic;
 
+You can then use C<with> to consume other roles and C<requires> to list the
+methods this role requires.
+
 =head1 CONSUMING ROLES
 
-To declare the current package as a class that will use roles, simple add
+To declare the current package as a class that will use roles, simply add
 the following line to the package:
 
     use Role::Basic 'with';
+
+Just as with L<Moose>, you can have C<-aliases> and list C<-excludes>.
 
 =head1 EXPORT
 
@@ -434,8 +442,8 @@ roles declaring requirements and conflict resolution.
 =item * Moose-like syntax
 
 To ease migration difficulties, we use a Moose-like syntax. If you wish to
-upgrade to Moose later, or find others on your project already familiar with
-Moose, this should make C<Role::Basic> easier to learn.
+upgrade to Moose later, or you find that others on your project are already
+familiar with Moose, this should make C<Role::Basic> easier to learn.
 
 =item * No handling of SUPER:: bug
 
@@ -451,7 +459,9 @@ generally involves eval'ing a method directly into the correct package:
 
 Or using a different method resolution order (MRO) such as with L<Class::C3>
 or friends. We alert you to this limitation but make no attempt to address it.
-This helps to keep this module simple, a primary design goal.
+We consider this a feature because roles should not know or care how they are
+composed and probably should not know if a superclass exists.  This helps to
+keep this module simple, a primary design goal.
 
 =item * Composition Safety
 
@@ -509,7 +519,8 @@ code itself to help keep the code closer to the L<Moose> syntax.
 
 =item * No instance application
 
-C<Role::Basic> does not support applying roles to object instances.
+C<Role::Basic> does not support applying roles to object instances.  This may
+change in the future.
 
 =item * No method modifiers
 
@@ -525,7 +536,8 @@ Moose mailing list, Stevan Little wrote:
     roles. They ruin the unordered-ness of roles and bring about edge cases
     like this that are not so easily solved.
 
-Thus, C<Role::Basic> does not support method modifiers.
+Thus, C<Role::Basic> does not and I<will not> support method modifiers. If you
+need them, consider L<Moose>.
 
 =back
 

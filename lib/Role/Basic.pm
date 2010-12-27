@@ -12,16 +12,47 @@ our $VERSION = '0.01';
 
 my %IS_ROLE;
 my %REQUIRED_BY;
-my %REQUIRES;
 my %HAS_ROLES;
+
+sub import {
+    my $class  = shift;
+    my $target = caller;
+
+    # everybody gets 'with' and 'DOES'
+    *{ _getglob "${target}::with" } = sub {
+        $class->apply_roles_to_package( $target, @_ );
+    };
+    # everybody gets 'with' and 'DOES'
+    *{ _getglob "${target}::DOES" } = sub {
+        my ( $class, $role ) = @_;
+        return $HAS_ROLES{$class}{$role};
+    };
+    if ( 1 == @_ && 'with' eq $_[0] ) {
+
+        # this is a class which is consuming roles
+        return;
+    }
+    elsif (@_) {
+        my $args = join ', ' => @_;    # more explicit than $"
+        Carp::confess(
+            "Multiple or unknown argument(s) in import list: ($args)");
+    }
+    else {
+        $IS_ROLE{$target} = 1;
+        *{ _getglob "${target}::requires" } = sub {
+            $class->add_to_requirements( $target, @_ );
+        };
+    }
+}
 
 sub add_to_requirements {
     my ( $class, $role, @methods ) = @_;
 
-    $REQUIRED_BY{$role} = \@methods;
-    foreach my $method (@methods) {
-        $REQUIRES{$method}{$role} = 1;
-    }
+    $REQUIRED_BY{$role} ||= [];
+    push @{ $REQUIRED_BY{$role} } => @methods;
+    my %seen;
+    @{ $REQUIRED_BY{$role} } =
+      grep { not $seen{$_}++ } @{ $REQUIRED_BY{$role} };
 }
 
 sub apply_roles_to_package {
@@ -47,10 +78,20 @@ sub apply_roles_to_package {
             $target_methods,
             $conflict_handlers
         );
-        push @{ $HAS_ROLES{$target} } => $role;
+        $HAS_ROLES{$target}{$role} = 1;
+        if ( my $roles = $HAS_ROLES{$role}) {
+            foreach my $role (keys %$roles) {
+                $HAS_ROLES{$target}{$role} = 1;
+            }
+        }
 
         foreach my $method ( @{ $REQUIRED_BY{$role} } ) {
             push @{ $requires{$method} } => $role;
+        }
+
+        # roles consuming roles should have the same requirements.
+        if ( $IS_ROLE{$target} ) {
+            $class->add_to_requirements( $target, @{ $REQUIRED_BY{$role} } );
         }
         foreach my $method (@$role_methods) {
             push @{ $provided_by{$method} } => $role;
@@ -216,37 +257,15 @@ sub _sub_package {
     return $package;
 }
 
-sub import {
-    my $class  = shift;
-    my $target = caller;
-
-    *{ _getglob "${target}::with" } = sub {
-        $class->apply_roles_to_package( $target, @_ );
-    };
-    if ( 1 == @_ && 'with' eq $_[0] ) {
-
-        # this is a class which is consuming roles
-        return;
-    }
-    elsif (@_) {
-        my $args = join ', ' => @_;    # more explicit than $"
-        Carp::confess(
-            "Multiple or unknown argument(s) in import list: ($args)");
-    }
-    else {
-        $IS_ROLE{$target} = 1;
-        *{ _getglob "${target}::requires" } = sub {
-            $class->add_to_requirements( $target, @_ );
-        };
-    }
-}
-
-sub END {
-    use Data::Dumper::Simple;
-    $Data::Dumper::Indent   = 1;
-    $Data::Dumper::Sortkeys = 1;
-    print STDERR Dumper( %IS_ROLE, %REQUIRED_BY, %REQUIRES, %HAS_ROLES );
-}
+#sub END {
+#    use Data::Dumper;
+#    $Data::Dumper::Indent   = 1;
+#    $Data::Dumper::Sortkeys = 1;
+#    print STDERR Data::Dumper->Dump(
+#        [ \%IS_ROLE, \%REQUIRED_BY, \%HAS_ROLES],
+#        [qw/*IS_ROLE *REQUIRED_BY *HAS_ROLES/],
+#    );
+#}
 
 sub _load_role {
     my ( $class, $role ) = @_;

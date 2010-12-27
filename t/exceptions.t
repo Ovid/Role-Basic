@@ -120,4 +120,28 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
     END_PACKAGE
     ok !$@, 'Excluding role methods should succeed' or diag $@;
 }
+
+{
+    {
+        package Role1;
+        use Role::Basic;
+        requires 'missing_method';
+        sub method1 { 'method1' }
+    }
+    {
+        package Role2;
+        use Role::Basic;
+        with 'Role1';
+        sub method2 { 'method2' }
+    }
+    eval <<"    END";
+    package My::Class::Missing1;
+    use Role::Basic 'with';
+    with 'Role2';
+    END
+    like $@,
+    qr/'Role2' requires the method 'missing_method' to be implemented by 'My::Class::Missing1'/,
+      'Roles composed from roles should propogate requirements upwards';
+}
+
 done_testing;

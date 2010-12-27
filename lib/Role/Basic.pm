@@ -293,28 +293,124 @@ __END__
 
 =head1 NAME
 
-Role::Basic - Minimal role support with a Moose-like syntax
+Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
 Version 0.01
 
-=cut
-
-
 =head1 SYNOPSIS
 
+In a role:
+
+    package Does::Serialize::AsYAML;
+    use Role::Basic;
+    use YAML::Syck;
+    requires 'as_hash';
+
+    sub serialize {
+        my $self = shift;
+        return Dump( $self->as_hash );
+    }
+
+    1;
+
+In your class:
+
+    package My::Class;
+    use Role::Basic 'with';
+
+    with qw(
+        Does::Serialize::AsYAML
+    );
+
+    sub as_hash { ... } # because the role requires it
+
+=head1 DESCRIPTION
+
+Sometimes you want roles. You're not sure about L<Moose>, L<Mouse>, L<Moo> and
+what I<was> that damned L<Squirrel> thing anyway?  Then there's
+L<Class::Trait>, but it has a funky syntax and the maintainer's deprecated it
+in favor of L<Moose::Role> and you really don't care that it handles
+overloading, instance application or has a workaround for the SUPER:: bug.
+You think a meta-object protocol sounds nifty, but you don't understand it.
+Maybe you're not sure you want the syntactic sugar for object declaration. You
+just want good, old-fashioned roles which let you separate class
+responsibility from code reuse.
+
+Whatever your reasons, this is the module you're looking for. It only provides
+roles and its major design goals are safety and simplicity.  It also aims to
+be a I<subset> of L<Moose::Role> behavior so that when/if you're ready to
+upgrade, there will be minimal pain.
+
+=head1 DECLARING A ROLE
+
+To declare the current package as a role, simple add the following line
+to the package:
 
     use Role::Basic;
 
-    my $foo = Role::Basic->new();
-    ...
+=head1 CONSUMING ROLES
+
+To declare the current package as a class that will use roles, simple add
+the following line to the package:
+
+    use Role::Basic 'with';
 
 =head1 EXPORT
 
-=head1 SUBROUTINES/METHODS
+Both roles and classes will receive the following methods:
 
-=cut
+=over 4
+
+=item * C<with>
+
+C<with> accepts a list and may only be called B<once> per role or class. This
+is because calling it multiple times removes composition safety.  Just as with
+L<Moose::Role>, any class may also have C<-aliases> or C<-excludes>.
+
+    package My::Class;
+    use Role::Basic 'with';
+
+    with 'Does::Serialize::AsYAML' => { -aliases => { serialize => 'as_yaml' } };
+
+And later:
+
+    print $object->as_yaml;
+
+=item * C<DOES>
+
+Returns true if the class or role consumes a role of the given name:
+
+ if ( $class->DOES('Does::Serialize::AsYAML') ) {
+    ...
+ }
+
+=back
+
+Further, if you're a role, you can also specify methods you require:
+
+=over 4
+
+=item * C<requires>
+
+    package Some::Role;
+    use Role::Basic;
+
+    # roles can consume other roles
+    with 'Another::Role';
+
+    requires qw(
+        first_method
+        second_method
+        another_method
+    );
+
+In the example above, if C<Another::Role> has methods it requires, they will
+be added to the requirements of C<Some::Role>.
+
+
+=back
 
 =head1 DESIGN GOALS AND LIMITATIONS
 

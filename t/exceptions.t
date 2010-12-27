@@ -143,5 +143,23 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
     qr/'Role2' requires the method 'missing_method' to be implemented by 'My::Class::Missing1'/,
       'Roles composed from roles should propogate requirements upwards';
 }
+{
+    {
+        package Role3;
+        use Role::Basic;
+        requires qw(this that);
+    }
+    eval <<"    END";
+    package My::Class::Missing2;
+    use Role::Basic 'with';
+    with 'Role3';
+    END
+    like $@,
+    qr/'Role3' requires the method 'this' to be implemented by 'My::Class::Missing2'/,
+      'Roles should be able to require multiple methods';
+    like $@,
+    qr/'Role3' requires the method 'that' to be implemented by 'My::Class::Missing2'/,
+      '... and have all of them provided in the error messages';
+}
 
 done_testing;

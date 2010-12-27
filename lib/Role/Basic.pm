@@ -592,6 +592,8 @@ L<http://search.cpan.org/dist/Role-Basic/>
 
 =head1 ACKNOWLEDGEMENTS
 
+Nicked some code from Moo's Role::Tiny.
+
 =head1 LICENSE AND COPYRIGHT
 
 Copyright 2010 Curtis 'Ovid' Poe.

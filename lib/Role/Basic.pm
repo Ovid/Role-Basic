@@ -354,7 +354,16 @@ to the package:
     use Role::Basic;
 
 You can then use C<with> to consume other roles and C<requires> to list the
-methods this role requires.
+methods this role requires.  Note that the I<only> methods the role will
+provide are methods declared directly in the role or consumed from other
+roles. Thus:
+
+    package My::Role;
+    use Role::Basic;
+    use List::Util 'sum'; # this will not be provided by the role
+    with 'Some::Other::Role'; # any methods from this role will be provided
+
+    sub some_method {...} # this will be provided by the role
 
 =head1 CONSUMING ROLES
 

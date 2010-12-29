@@ -328,6 +328,9 @@ In your class:
 
 =head1 DESCRIPTION
 
+For an extended discussion, see
+L<http://blogs.perl.org/users/ovid/2010/12/rolebasic---when-you-only-want-roles.html>.
+
 Sometimes you want roles. You're not sure about L<Moose>, L<Mouse>, L<Moo> and
 what I<was> that damned L<Squirrel> thing anyway?  Then there's
 L<Class::Trait>, but it has a funky syntax and the maintainer's deprecated it

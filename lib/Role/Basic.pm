@@ -8,7 +8,7 @@ use warnings FATAL => 'all';
 use B qw/svref_2object/;
 use Carp ();
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 my %IS_ROLE;
 my %REQUIRED_BY;
@@ -297,7 +297,7 @@ Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =head1 SYNOPSIS
 

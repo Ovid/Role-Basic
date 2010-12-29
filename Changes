@@ -1,5 +1,8 @@
 Revision history for Role-Basic
 
-0.01    
+0.02    Dec 29, 2010
+        Remove Carp::Always. Oops :)
+
+0.01    Dec 28, 2010    
         Minimal role support with a Moose-like syntax
 

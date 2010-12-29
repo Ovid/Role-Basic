@@ -1,5 +1,5 @@
 ---
-abstract: 'Minimal role support with a Moose-like syntax'
+abstract: 'Just roles. Nothing else.'
 author:
   - "Curtis 'Ovid' Poe <ovid@cpan.org>"
 build_requires:

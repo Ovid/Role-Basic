@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 
 use Test::Most;
-use Carp::Always;
 use lib 'lib';
 require Role::Basic;
 

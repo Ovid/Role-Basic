@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 
 use Test::Most;
-use Carp::Always;
 use lib 'lib', 't/lib';
 
 use_ok 'My::Example' or BAIL_OUT 'Could not load test module My::Example';

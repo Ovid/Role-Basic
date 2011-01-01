@@ -1,8 +1,11 @@
 Revision history for Role-Basic
 
+0.03    Jan 1, 2011
+        - Bugfix: rename '-aliases' to '-alias' for Moose compatability.
+
 0.02    Dec 29, 2010
-        Remove Carp::Always. Oops :)
+        - Remove Carp::Always. Oops :)
 
 0.01    Dec 28, 2010    
-        Minimal role support with a Moose-like syntax
+        - Minimal role support with a Moose-like syntax
 

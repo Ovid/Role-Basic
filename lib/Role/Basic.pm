@@ -8,7 +8,7 @@ use warnings FATAL => 'all';
 use B qw/svref_2object/;
 use Carp ();
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 my %IS_ROLE;
 my %REQUIRED_BY;
@@ -152,11 +152,11 @@ sub _add_role_methods_to_target {
     my %is_excluded = map { $_ => 1 } @$excludes;
 
     # rename methods to alias
-    my $aliases = delete $conflict_handlers->{'-aliases'};
+    my $aliases = delete $conflict_handlers->{'-alias'};
     $aliases ||= {};
     unless ( 'HASH' eq ref $aliases ) {
         Carp::confess(
-            "Argument to '-aliases' in package $target must be a hash reference"
+            "Argument to '-alias' in package $target must be a hash reference"
         );
     }
     while ( my ( $old_method, $new_method ) = each %$aliases ) {
@@ -297,7 +297,7 @@ Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =head1 SYNOPSIS
 
@@ -375,7 +375,7 @@ the following line to the package:
 
     use Role::Basic 'with';
 
-Just as with L<Moose>, you can have C<-aliases> and list C<-excludes>.
+Just as with L<Moose>, you can have C<-alias> and list C<-excludes>.
 
 =head1 EXPORT
 
@@ -387,12 +387,12 @@ Both roles and classes will receive the following methods:
 
 C<with> accepts a list and may only be called B<once> per role or class. This
 is because calling it multiple times removes composition safety.  Just as with
-L<Moose::Role>, any class may also have C<-aliases> or C<-excludes>.
+L<Moose::Role>, any class may also have C<-alias> or C<-excludes>.
 
     package My::Class;
     use Role::Basic 'with';
 
-    with 'Does::Serialize::AsYAML' => { -aliases => { serialize => 'as_yaml' } };
+    with 'Does::Serialize::AsYAML' => { -alias => { serialize => 'as_yaml' } };
 
 And later:
 

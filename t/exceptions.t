@@ -96,7 +96,7 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
     package My::Bad::MethodConflicts2;
     use Role::Basic 'with';
     with 'My::Does::Basic',
-         'My::Conflict2' => { -aliases => { conflict => 'turbo_charger' } };
+         'My::Conflict2' => { -alias => { conflict => 'turbo_charger' } };
     sub turbo_charger {}
     END_PACKAGE
     like $@,

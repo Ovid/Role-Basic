@@ -10,6 +10,8 @@ my $builder = Module::Build->new(
     build_requires     => { 'Test::Most' => 0, },
     add_to_cleanup     => ['Role-Basic-*'],
     create_makefile_pl => 'traditional',
+    meta_merge =>
+      { resources => { repository => 'https://github.com/Ovid/Role-Basic' } },
 );
 
 $builder->create_build_script();

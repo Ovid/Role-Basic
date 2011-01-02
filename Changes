@@ -1,5 +1,9 @@
 Revision history for Role-Basic
 
+0.04
+        - List repository in Build.PL so that people people on CPAN can find
+          the github version.
+
 0.03    Jan 1, 2011
         - Bugfix: rename '-aliases' to '-alias' for Moose compatability.
 

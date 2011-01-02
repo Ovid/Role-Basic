@@ -15,7 +15,8 @@ name: Role-Basic
 provides:
   Role::Basic:
     file: lib/Role/Basic.pm
-    version: 0.03
+    version: 0.04
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.03
+  repository: https://github.com/Ovid/Role-Basic
+version: 0.04

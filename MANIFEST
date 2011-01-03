@@ -5,6 +5,7 @@ MANIFEST
 README
 t/00-load.t
 t/basic.t
+t/bugs.t
 t/composition.t
 t/exceptions.t
 t/internals.t

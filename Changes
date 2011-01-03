@@ -1,6 +1,8 @@
 Revision history for Role-Basic
 
-0.04
+0.04    Jan 3, 2011
+        - Ensure that multiple roles flattening in identical methods from same
+          role don't cause conflicts (report by Marcel Grünauer)
         - List repository in Build.PL so that people people on CPAN can find
           the github version.
 

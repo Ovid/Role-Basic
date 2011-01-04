@@ -1,20 +1,17 @@
 #!/usr/bin/env perl
 
-use Test::Most;
+use Test::More tests => 5;
 use lib 'lib', 't/lib';
 use Role::Basic ();
 
-subtest '_load_role' => sub {
-    lives_ok { Role::Basic->_load_role('My::Does::Basic') }
-    'Role::Basic->_load_role should succeed loading a package';
-    ok exists $INC{'My/Does/Basic.pm'}, 'and it should be in the %INC hash';
-    lives_ok { Role::Basic->_load_role('My::Does::Basic') }
-    'and trying to load a role more than once should be OK';
-    throws_ok { Role::Basic->_load_role('No::Such::Role') }
-        qr{Can't locate No/Such/Role\.pm in \@INC},
-        'but trying to load a non-existent package should fail';
-    done_testing;
-};
+eval { Role::Basic->_load_role('My::Does::Basic') };
+ok !$@, 'Role::Basic->_load_role should succeed loading a package';
+ok exists $INC{'My/Does/Basic.pm'}, 'and it should be in the %INC hash';
+eval { Role::Basic->_load_role('My::Does::Basic') };
+ok !$@, 'and trying to load a role more than once should be OK';
+eval { Role::Basic->_load_role('No::Such::Role') };
+like $@, qr{Can't locate No/Such/Role\.pm in \@INC},
+    'but trying to load a non-existent package should fail';
 
 { 
     package My::Example;
@@ -28,9 +25,10 @@ subtest '_load_role' => sub {
     sub foo() {}
 }
 
-
-eq_or_diff [sort keys %{ Role::Basic->_get_methods('My::Example') } ],
-    [qw/foo new turbo_charger/],
-    'Role::Basic->_get_methods should only return methods defined in the package';
-
-done_testing;
+my $methods = [sort keys %{ Role::Basic->_get_methods('My::Example') } ];
+is_deeply $methods, [qw/foo new turbo_charger/],
+  'Role::Basic->_get_methods should only return methods defined in the package'
+  or do {
+    require Data::Dumper;
+    diag Data::Dumper::Dumper($methods);
+  };

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use Test::Most;
+use Test::More tests => 12;
 use lib 'lib', 't/lib';
 require Role::Basic;
 
@@ -16,8 +16,9 @@ require Role::Basic;
     }
 }
 
-throws_ok { Role::Basic->_load_role('My::Example') }
-qr/Only roles defined with Role::Basic may be loaded/,
+eval { Role::Basic->_load_role('My::Example') };
+my $error = $@;
+like $error, qr/Only roles defined with Role::Basic may be loaded/,
   'Trying to load non-roles should fail';
 
 eval <<'END_PACKAGE';
@@ -160,5 +161,3 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
     qr/'Role3' requires the method 'that' to be implemented by 'My::Class::Missing2'/,
       '... and have all of them provided in the error messages';
 }
-
-done_testing;

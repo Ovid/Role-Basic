@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use Test::Most;
+use Test::More tests => 7;
 use lib 'lib', 't/lib';
 
 {
@@ -42,4 +42,3 @@ foreach my $method (qw/foo bar baz/) {
     is $object->$method, $method,
       '... and all methods should be composed in correctly';
 }
-done_testing;

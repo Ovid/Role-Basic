@@ -1,5 +1,8 @@
 Revision history for Role-Basic
 
+0.05    Jan 4, 2011
+        - Remove Test::Most dependency. All deps are now core.
+
 0.04    Jan 3, 2011
         - Ensure that multiple roles flattening in identical methods from same
           role don't cause conflicts (report by Marcel Grünauer)

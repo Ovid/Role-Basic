@@ -3,7 +3,7 @@ abstract: 'Just roles. Nothing else.'
 author:
   - "Curtis 'Ovid' Poe <ovid@cpan.org>"
 build_requires:
-  Test::Most: 0
+  Test::More: 0
 configure_requires:
   Module::Build: 0.36
 dynamic_config: 0

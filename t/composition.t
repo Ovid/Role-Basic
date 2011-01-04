@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use Test::Most;
+use Test::More tests => 14;
 use lib 'lib';
 require Role::Basic;
 
@@ -79,6 +79,3 @@ ok $object->DOES('My::Does::Basic2'),
   '... and should do roles which its roles consumes';
 ok !$object->DOES('My::Does::Basic1'),
   '... but not roles which it never consumed';
-
-
-done_testing;

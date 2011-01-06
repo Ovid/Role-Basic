@@ -8,7 +8,7 @@ use warnings FATAL => 'all';
 use B qw/svref_2object/;
 use Carp ();
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES );
 
@@ -260,27 +260,19 @@ sub _sub_package {
     return $package;
 }
 
-#sub END {
-#    use Data::Dumper;
-#    $Data::Dumper::Indent   = 1;
-#    $Data::Dumper::Sortkeys = 1;
-#    print STDERR Data::Dumper->Dump(
-#        [ \%IS_ROLE, \%REQUIRED_BY, \%HAS_ROLES],
-#        [qw/*IS_ROLE *REQUIRED_BY *HAS_ROLES/],
-#    );
-#}
-
 sub _load_role {
     my ( $class, $role ) = @_;
+
     return 1 if $IS_ROLE{$role};
-    unless ( $role->can('can') ) {
+    my $stash = do { no strict 'refs'; \%{"${role}::"} };
+    unless ( keys %$stash ) {
         ( my $filename = $role ) =~ s/::/\//g;
         require "${filename}.pm";
         no strict 'refs';
     }
     my $requires = $role->can('requires');
 
-    if ( !$requires || $class ne _sub_package($requires) ) {
+    if ( !$requires || $class ne ( _sub_package($requires) || '' ) ) {
         Carp::confess(
             "Only roles defined with $class may be loaded with _load_role");
     }
@@ -299,7 +291,7 @@ Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =head1 SYNOPSIS
 

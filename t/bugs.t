@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use Test::More tests => 7;
+use Test::More tests => 8;
 use lib 'lib', 't/lib';
 
 {
@@ -41,4 +41,17 @@ foreach my $method (qw/foo bar baz/) {
     can_ok $object, $method;
     is $object->$method, $method,
       '... and all methods should be composed in correctly';
+}
+
+{
+    local *UNIVERSAL::can = sub { 1 };
+    eval <<'    END';
+    package Can::Can;
+    use Role::Basic 'with';
+    with 'A::NonExistent::Role';
+    END
+    my $error = $@ || '';
+    like $error, qr{^Can't locate A/NonExistent/Role.pm},
+        'If ->can always returns true, we should still not think we loaded the role'
+            or diag "Error found: $error";
 }

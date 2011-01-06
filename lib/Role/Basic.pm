@@ -10,7 +10,7 @@ use Carp ();
 
 our $VERSION = '0.06';
 
-my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES );
+my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ROLE_ALLOWS );
 
 sub import {
     my $class  = shift;
@@ -31,17 +31,28 @@ sub import {
         # this is a class which is consuming roles
         return;
     }
+    elsif ( 2 == @_ && 'allow' eq $_[0] ) {
+
+        # this is a role which allows methods from a foreign class
+        $ROLE_ALLOWS{$target} = $_[1];
+        $class->_declare_role($target);
+    }
     elsif (@_) {
         my $args = join ', ' => @_;    # more explicit than $"
         Carp::confess(
             "Multiple or unknown argument(s) in import list: ($args)");
     }
     else {
-        $IS_ROLE{$target} = 1;
-        *{ _getglob "${target}::requires" } = sub {
-            $class->add_to_requirements( $target, @_ );
-        };
+        $class->_declare_role($target);
     }
+}
+
+sub _declare_role {
+    my ($class, $target) = @_;
+    $IS_ROLE{$target} = 1;
+    *{ _getglob "${target}::requires" } = sub {
+        $class->add_to_requirements( $target, @_ );
+    };
 }
 
 sub add_to_requirements {
@@ -237,6 +248,12 @@ sub _is_valid_method {
 
       # no imported methods
       $target eq $source
+
+      ||
+
+      # unless it's a role and 'allows' another class
+      ( exists $ROLE_ALLOWS{$target} && $ROLE_ALLOWS{$target} eq $source )
+
       ||
 
       # unless we're a role and they're composed from another role
@@ -257,7 +274,7 @@ sub _sub_package {
     if ( my $error = $@ ) {
         warn "Could not determine calling package: $error";
     }
-    return $package;
+    return $package || '';
 }
 
 sub _load_role {
@@ -272,9 +289,9 @@ sub _load_role {
     }
     my $requires = $role->can('requires');
 
-    if ( !$requires || $class ne ( _sub_package($requires) || '' ) ) {
+    if ( !$requires || $class ne _sub_package($requires) ) {
         Carp::confess(
-            "Only roles defined with $class may be loaded with _load_role");
+            "Only roles defined with $class may be loaded with _load_role.  '$role' is not allowed.");
     }
 
     $IS_ROLE{$role} = 1;
@@ -361,6 +378,32 @@ roles. Thus:
     with 'Some::Other::Role'; # any methods from this role will be provided
 
     sub some_method {...} # this will be provided by the role
+
+=head2 Allowed methods in roles
+
+As mentioned, methods imported into a role are not provided by that role.
+However, this can make it very hard when you want to provide simple
+getters/setters. To get around this limitation, a role (and only roles, not
+classes) may specify one class which they 'allow' to provide additional
+methods:
+
+    package My::Role;
+    use Role::Basic allow => 'Class::BuildMethods';
+    use Class::BuildMethods qw/foo bar/;
+
+    # your role will now provide foo and bar methods
+    # rest of role definition here
+
+Please note that if you do this, the code which provides these 'extra' methods
+should not provide them in a way which is incompatible with your objects. For
+example, many getter/setters generation classes assume you're using a blessed
+hashref. Most objects are, but the role should not make such an assumption
+about the class which consumes it. In the above example, we use
+L<Class::BuildMethods>. It's agnostic about your object implementation, but
+it's slow.
+
+See L<http://blogs.perl.org/users/ovid/2011/01/happy-new-yearroles.html> and
+search for 'glue' to understand why this is important.
 
 =head1 CONSUMING ROLES
 

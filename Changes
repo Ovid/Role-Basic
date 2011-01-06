@@ -1,7 +1,10 @@
 Revision history for Role-Basic
 
-0.06
+0.06    Jan 6, 2011
+        - Allow roles to have getter/setter generators (Marcel Grünauer
+          pointed this out).
         - Work around 5.6.x bug where ->can('can') was always returning true.
+          Thanks to Ben Morrow for spotting the bug.
 
 0.05    Jan 4, 2011
         - Remove Test::Most dependency. All deps are now core.

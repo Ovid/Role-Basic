@@ -44,6 +44,7 @@ foreach my $method (qw/foo bar baz/) {
 }
 
 {
+    no warnings 'redefine';
     local *UNIVERSAL::can = sub { 1 };
     eval <<'    END';
     package Can::Can;

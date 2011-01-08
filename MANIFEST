@@ -11,6 +11,7 @@ t/exceptions.t
 t/internals.t
 t/lib/My/Does/Basic.pm
 t/lib/My/Example.pm
+t/lib/TestMethods.pm
 xt/manifest.t
 xt/pod-coverage.t
 xt/pod.t

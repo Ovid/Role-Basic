@@ -10,7 +10,7 @@ use Carp ();
 
 our $VERSION = '0.07';
 
-my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ROLE_ALLOWS );
+my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ROLE_ALLOWS, %ALLOWED_BY );
 
 sub import {
     my $class  = shift;
@@ -34,7 +34,9 @@ sub import {
     elsif ( 2 == @_ && 'allow' eq $_[0] ) {
 
         # this is a role which allows methods from a foreign class
-        $ROLE_ALLOWS{$target} = $_[1];
+        my $foreign_class = $_[1];
+        $ROLE_ALLOWS{$target} = $foreign_class;
+        push @{ $ALLOWED_BY{$foreign_class} } => $target;
         $class->_declare_role($target);
     }
     elsif (@_) {
@@ -71,6 +73,16 @@ sub get_requirements {
     return @$requirements;
 }
 
+sub _roles {
+    my ( $class, $target ) = @_;
+    return unless $HAS_ROLES{$target};
+    my @roles;
+    foreach my $role ( keys %{ $HAS_ROLES{$target} } ) {
+        push @roles => $role, $class->_roles($role);
+    }
+    return @roles;
+}
+
 sub apply_roles_to_package {
     my ( $class, $target, @roles ) = @_;
     if ( $HAS_ROLES{$target} ) {
@@ -86,14 +98,14 @@ sub apply_roles_to_package {
         $class->_load_role($role);
 
         # XXX this is awful. Don't tell anyone I wrote this
+        $HAS_ROLES{$target}{$role} = 1;
         my $role_methods = $class->_add_role_methods_to_target( 
             $role,
             $target,
             $conflict_handlers
         );
-        $HAS_ROLES{$target}{$role} = 1;
-        if ( my $roles = $HAS_ROLES{$role}) {
-            foreach my $role (keys %$roles) {
+        if ( my $roles = $HAS_ROLES{$role} ) {
+            foreach my $role ( keys %$roles ) {
                 $HAS_ROLES{$target}{$role} = 1;
             }
         }
@@ -161,7 +173,7 @@ sub _add_role_methods_to_target {
     my ( $class, $role, $target, $conflict_handlers ) = @_;
 
     my $target_methods = $class->_get_methods($target);
-    my $code_for = $class->_get_methods($role);
+    my $code_for       = $class->_get_methods($role);
 
     # figure out which methods to exclude
     my $excludes = delete $conflict_handlers->{'-excludes'} || [];
@@ -234,8 +246,7 @@ sub _get_methods {
         local $_ = $_;
         my $code = *$_{CODE};
         s/^\*$target\:://;
-        $_ =>
-          { code => $code, source => _sub_package( $target, $code ) }
+        $_ => { code => $code, source => _sub_package($code) }
       }
       grep {
         !( ref eq 'SCALAR' )    # not a scalar
@@ -248,29 +259,31 @@ sub _get_methods {
 sub _is_valid_method {
     my ( $target, $code ) = @_;
 
-    my $source = _sub_package($target, $code);
+    my $source = _sub_package($code) or return;
 
     # XXX There's a potential bug where some idiot could use Role::Basic to
     # create exportable functions and those get exported into a role. That's
     # far-fetched enough that I'm not worried about it.
-    return
-
-      # no imported methods
+    my $is_valid =
+      # declared in package, not imported
       $target eq $source
-
       ||
-
-      # unless it's a role and 'allows' another class
-      ( exists $ROLE_ALLOWS{$target} && $ROLE_ALLOWS{$target} eq $source )
-
-      ||
-
       # unless we're a role and they're composed from another role
       $IS_ROLE{$target} && $IS_ROLE{$source};
+    
+    unless ($is_valid) {
+        foreach my $role (@{ $ALLOWED_BY{$source} }) {
+            return 1 if $target->DOES($role);
+        }
+        return 1
+          if exists $ROLE_ALLOWS{$target} && $ROLE_ALLOWS{$target} eq $source;
+    }
+    return $is_valid;
+
 }
 
 sub _sub_package {
-    my ( $package, $code ) = @_;
+    my ($code) = @_;
     my $source_package;
     eval {
         my $stash = svref_2object($code)->STASH;
@@ -299,7 +312,7 @@ sub _load_role {
     }
     my $requires = $role->can('requires');
 
-    if ( !$requires || $class ne _sub_package($class, $requires) ) {
+    if ( !$requires || $class ne _sub_package($requires) ) {
         Carp::confess(
             "Only roles defined with $class may be loaded with _load_role.  '$role' is not allowed.");
     }

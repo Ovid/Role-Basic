@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use Test::More tests => 20;
+use Test::More tests => 27;
 use lib 'lib';
 require Role::Basic;
 
@@ -81,34 +81,10 @@ ok !$object->DOES('My::Does::Basic1'),
   '... but not roles which it never consumed';
 
 {
-    package Test::Make::Method;
-
-    sub import {
-        my $class = shift;
-        my $target = caller;
-        my @methods = @_;
-
-        foreach my $method (@methods) {
-            my $fq_method = $target . "::$method";
-            no strict 'refs';
-            *$fq_method = sub {
-                my $self = shift;
-                return $self->{$method} unless @_;
-                $self->{$method} = shift;
-                return $self;
-            };
-        }
-    }
-
-    # required in BEGIN lest the later 'use' fails
-    BEGIN { $INC{'Test/Make/Method.pm'} = 1 }
-}
-
-{
     {
         package Role::Which::Imports;
-        use Role::Basic allow => 'Test::Make::Method';
-        use Test::Make::Method qw(this that);
+        use Role::Basic allow => 'TestMethods';
+        use TestMethods qw(this that);
     }
     {
        package Class::With::ImportingRole;
@@ -117,6 +93,28 @@ ok !$object->DOES('My::Does::Basic1'),
        sub new { bless {} => shift }
     }
     my $o = Class::With::ImportingRole->new;
+
+    foreach my $method (qw/this that/) {
+        can_ok $o, $method;
+        ok $o->$method($method), '... and calling "allow"ed methods should succeed';
+        is $o->$method, $method, '... and it should function correctly';
+    }
+}
+
+{
+    {
+        package Role::WithImportsOnceRemoved;
+        use Role::Basic;
+        with 'Role::Which::Imports';
+    }
+    {
+       package Class::With::ImportingRole2;
+       use Role::Basic 'with';
+       with 'Role::WithImportsOnceRemoved';
+       sub new { bless {} => shift }
+    }
+    ok my $o = Class::With::ImportingRole2->new,
+        'We should be able to use roles which compose roles which import';
 
     foreach my $method (qw/this that/) {
         can_ok $o, $method;

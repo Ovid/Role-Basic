@@ -8,7 +8,7 @@ use warnings FATAL => 'all';
 use B qw/svref_2object/;
 use Carp ();
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ROLE_ALLOWS );
 
@@ -308,7 +308,7 @@ Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =head1 SYNOPSIS
 
@@ -336,6 +336,11 @@ In your class:
     );
 
     sub as_hash { ... } # because the role requires it
+
+=head1 ALPHA CODE
+
+This code should not be considered production ready. The basic features are
+there, but a few issues are still being fleshed out.
 
 =head1 DESCRIPTION
 
@@ -380,6 +385,9 @@ roles. Thus:
     sub some_method {...} # this will be provided by the role
 
 =head2 Allowed methods in roles
+
+B<Warning>: this functionality is experimental and is subject to change with
+no warning.
 
 As mentioned, methods imported into a role are not provided by that role.
 However, this can make it very hard when you want to provide simple

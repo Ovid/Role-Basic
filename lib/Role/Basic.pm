@@ -65,6 +65,12 @@ sub add_to_requirements {
       grep { not $seen{$_}++ } @{ $REQUIRED_BY{$role} };
 }
 
+sub get_requirements {
+    my ( $class, $role ) = @_;
+    return unless my $requirements = $REQUIRED_BY{$role};
+    return @$requirements;
+}
+
 sub apply_roles_to_package {
     my ( $class, $target, @roles ) = @_;
     if ( $HAS_ROLES{$target} ) {
@@ -94,13 +100,14 @@ sub apply_roles_to_package {
             }
         }
 
-        foreach my $method ( @{ $REQUIRED_BY{$role} } ) {
+        foreach my $method ( $class->get_requirements($role) ) {
             push @{ $requires{$method} } => $role;
         }
 
         # roles consuming roles should have the same requirements.
         if ( $IS_ROLE{$target} ) {
-            $class->add_to_requirements( $target, @{ $REQUIRED_BY{$role} } );
+            $class->add_to_requirements( $target,
+                $class->get_requirements($role) );
         }
         while ( my ( $method, $data ) = each %$role_methods ) {
             push @{ $provided_by{$method} } => $data;
@@ -226,7 +233,7 @@ sub _get_methods {
         local $_ = $_;
         my $code = *$_{CODE};
         s/^\*$target\:://;
-        $_ => { code => $code, source => _sub_package($code) }
+        $_ => { code => $code, source => _sub_package($target, $code) }
       }
       grep {
         !( ref eq 'SCALAR' )    # not a scalar
@@ -239,7 +246,7 @@ sub _get_methods {
 sub _is_valid_method {
     my ( $target, $code ) = @_;
 
-    my $source = _sub_package($code);
+    my $source = _sub_package($target, $code);
 
     # XXX There's a potential bug where some idiot could use Role::Basic to
     # create exportable functions and those get exported into a role. That's
@@ -261,20 +268,21 @@ sub _is_valid_method {
 }
 
 sub _sub_package {
-    my $package;
+    my ( $package, $code ) = @_;
+    my $source_package;
     eval {
-        my $stash = svref_2object(shift)->STASH;
+        my $stash = svref_2object($code)->STASH;
         if ( $stash && $stash->can('NAME') ) {
-            $package = $stash->NAME;
+            $source_package = $stash->NAME;
         }
         else {
-            $package = '';
+            $source_package = '';
         }
     };
     if ( my $error = $@ ) {
-        warn "Could not determine calling package: $error";
+        warn "Could not determine calling source_package: $error";
     }
-    return $package || '';
+    return $source_package || '';
 }
 
 sub _load_role {
@@ -289,7 +297,7 @@ sub _load_role {
     }
     my $requires = $role->can('requires');
 
-    if ( !$requires || $class ne _sub_package($requires) ) {
+    if ( !$requires || $class ne _sub_package($class, $requires) ) {
         Carp::confess(
             "Only roles defined with $class may be loaded with _load_role.  '$role' is not allowed.");
     }

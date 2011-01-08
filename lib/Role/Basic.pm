@@ -78,7 +78,6 @@ sub apply_roles_to_package {
     }
 
     my ( %provided_by, %requires );
-    my $target_methods = $class->_get_methods($target);
     while ( my $role = shift @roles ) {
 
         # will need to verify that they're actually a role!
@@ -90,7 +89,6 @@ sub apply_roles_to_package {
         my $role_methods = $class->_add_role_methods_to_target( 
             $role,
             $target,
-            $target_methods,
             $conflict_handlers
         );
         $HAS_ROLES{$target}{$role} = 1;
@@ -160,7 +158,9 @@ sub _check_requirements {
 }
 
 sub _add_role_methods_to_target {
-    my ( $class, $role, $target, $target_methods, $conflict_handlers ) = @_;
+    my ( $class, $role, $target, $conflict_handlers ) = @_;
+
+    my $target_methods = $class->_get_methods($target);
     my $code_for = $class->_get_methods($role);
 
     # figure out which methods to exclude
@@ -200,7 +200,6 @@ sub _add_role_methods_to_target {
             delete $code_for->{$method};
             next;
         }
-        no strict 'refs';
 
         if ( exists $target_methods->{$method} ) {
             if ( $ENV{PERL_ROLE_OVERRIDE_DIE} ) {
@@ -217,12 +216,14 @@ sub _add_role_methods_to_target {
         }
 
         # XXX we're going to handle this ourselves
+        no strict 'refs';
         no warnings 'redefine';
         *{"${target}::$method"} = $code_for->{$method}{code};
     }
     return $code_for;
 }
 
+# We can cache this at some point, but for now, the return value is munged
 sub _get_methods {
     my ( $class, $target ) = @_;
 
@@ -233,7 +234,8 @@ sub _get_methods {
         local $_ = $_;
         my $code = *$_{CODE};
         s/^\*$target\:://;
-        $_ => { code => $code, source => _sub_package($target, $code) }
+        $_ =>
+          { code => $code, source => _sub_package( $target, $code ) }
       }
       grep {
         !( ref eq 'SCALAR' )    # not a scalar

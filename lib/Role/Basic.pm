@@ -73,6 +73,13 @@ sub get_requirements {
     return @$requirements;
 }
 
+sub requires_method {
+    my ( $class, $role, $method ) = @_;
+    return unless $IS_ROLE{$role};
+    my %requires = map { $_ => 1 } $class->get_requirements($role);
+    return $requires{$method};
+}
+
 sub _roles {
     my ( $class, $target ) = @_;
     return unless $HAS_ROLES{$target};
@@ -141,9 +148,9 @@ sub _check_conflicts {
     while ( my ( $method, $roles ) = each %$provided_by ) {
         my @sources = _uniq map { $_->{source} } @$roles;
         if ( @sources > 1 ) {
-            my $sources = join " and " => @sources;
+            my $sources = join "' and '" => @sources;
             push @errors =>
-"Due to method name conflicts in $sources, the method '$method' must be included or excluded in $target";
+"Due to a method name conflict in roles '$sources', the method '$method' must be implemented or excluded by '$target'";
         }
     }
     if ( my $errors = join "\n" => @errors ) {

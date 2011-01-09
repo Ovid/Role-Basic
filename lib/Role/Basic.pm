@@ -23,8 +23,9 @@ sub import {
     # everybody gets 'with' and 'DOES'
     *{ _getglob "${target}::DOES" } = sub {
         my ( $proto, $role ) = @_;
-        my $class = ref $proto || $proto;
-        return $HAS_ROLES{$class}{$role};
+        my $class_or_role = ref $proto || $proto;
+        return 1 if $class_or_role eq $role;
+        return $HAS_ROLES{$class_or_role}{$role};
     };
     if ( 1 == @_ && 'with' eq $_[0] ) {
 
@@ -147,7 +148,11 @@ sub _check_conflicts {
     my @errors;
     while ( my ( $method, $roles ) = each %$provided_by ) {
         my @sources = _uniq map { $_->{source} } @$roles;
-        if ( @sources > 1 ) {
+
+        # more than one role provides the method and it's not overridden by
+        # the consuming class having that method
+        if ( @sources > 1 && $target ne _sub_package( $target->can($method) ) )
+        {
             my $sources = join "' and '" => @sources;
             push @errors =>
 "Due to a method name conflict in roles '$sources', the method '$method' must be implemented or excluded by '$target'";
@@ -489,6 +494,8 @@ Returns true if the class or role consumes a role of the given name:
  if ( $class->DOES('Does::Serialize::AsYAML') ) {
     ...
  }
+
+Every role "DOES" itself.
 
 =back
 

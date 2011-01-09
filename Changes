@@ -1,5 +1,8 @@
 Revision history for Role-Basic
 
+0.0701  Jan 9, 2011
+        - Bug fix: add t/lib to t/composition.t (Marcel Grünauer)
+
 0.07    Jan 8, 2011
         - Fix problem where 'allowed' methods in one role weren't carried over
           into another. Reported by Marcel Grünauer. I really need to grab the

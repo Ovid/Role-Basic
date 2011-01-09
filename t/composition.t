@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 use Test::More tests => 27;
-use lib 'lib';
+use lib 'lib', 't/lib';
 require Role::Basic;
 
 {

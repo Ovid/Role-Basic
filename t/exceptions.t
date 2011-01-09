@@ -82,7 +82,7 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
     sub turbo_charger {}
     END_PACKAGE
     like $@,
-    qr/Due to method name conflicts in My::Does::Basic and My::Conflict, the method 'conflict' must be included or excluded in My::Bad::MethodConflicts/,
+    qr/Due to a method name conflict in roles 'My::Does::Basic' and 'My::Conflict', the method 'conflict' must be implemented or excluded by 'My::Bad::MethodConflicts'/,
       'Trying to use multiple roles with the same method should fail';
 }
 

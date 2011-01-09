@@ -8,7 +8,7 @@ use warnings FATAL => 'all';
 use B qw/svref_2object/;
 use Carp ();
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ROLE_ALLOWS, %ALLOWED_BY );
 
@@ -95,7 +95,8 @@ sub apply_roles_to_package {
         # will need to verify that they're actually a role!
 
         my $conflict_handlers = shift @roles if ref $roles[0];
-        $class->_load_role($role);
+        $conflict_handlers ||= {};
+        $class->_load_role( $role, delete $conflict_handlers->{'-version'} );
 
         # XXX this is awful. Don't tell anyone I wrote this
         $HAS_ROLES{$target}{$role} = 1;
@@ -301,22 +302,19 @@ sub _sub_package {
 }
 
 sub _load_role {
-    my ( $class, $role ) = @_;
+    my ( $class, $role, $version ) = @_;
+
+    $version ||= '';
+    eval "use $role $version";
+    Carp::confess($@) if $@;
 
     return 1 if $IS_ROLE{$role};
-    my $stash = do { no strict 'refs'; \%{"${role}::"} };
-    unless ( keys %$stash ) {
-        ( my $filename = $role ) =~ s/::/\//g;
-        require "${filename}.pm";
-        no strict 'refs';
-    }
-    my $requires = $role->can('requires');
 
+    my $requires = $role->can('requires');
     if ( !$requires || $class ne _sub_package($requires) ) {
         Carp::confess(
             "Only roles defined with $class may be loaded with _load_role.  '$role' is not allowed.");
     }
-
     $IS_ROLE{$role} = 1;
     return 1;
 }
@@ -331,7 +329,7 @@ Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 =head1 SYNOPSIS
 
@@ -443,7 +441,7 @@ the following line to the package:
 
     use Role::Basic 'with';
 
-Just as with L<Moose>, you can have C<-alias> and list C<-excludes>.
+Just as with L<Moose>, you can have C<-alias>, C<-excludes>, and C<-version>.
 
 =head1 EXPORT
 
@@ -496,7 +494,6 @@ Further, if you're a role, you can also specify methods you require:
 
 In the example above, if C<Another::Role> has methods it requires, they will
 be added to the requirements of C<Some::Role>.
-
 
 =back
 

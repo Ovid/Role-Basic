@@ -3,13 +3,8 @@
 use strict;
 use warnings;
 
-use Test::More tests => 51;
-
-sub fake_load ($) {
-    my $package = shift;
-    $package =~ s{""}{/}g;
-    $INC{"$package.pm"} = 'fake_load';
-}
+use lib 't/lib';
+use MyTests tests => 51;
 
 {
     package FooRole;
@@ -21,15 +16,12 @@ sub fake_load ($) {
 
     sub goo {'FooRole::goo'}
     sub foo {'FooRole::foo'}
-
-    ::fake_load __PACKAGE__;
 }
 
 {
     package BarRole;
     use Role::Basic;;
     sub woot {'BarRole::woot'}
-    ::fake_load __PACKAGE__;
 }
 
 {
@@ -37,7 +29,6 @@ sub fake_load ($) {
 
     sub boo {'BarClass::boo'}
     sub foo {'BarClass::foo'}    # << the role overrides this ...
-    ::fake_load __PACKAGE__;
 }
 
 {

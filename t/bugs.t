@@ -8,7 +8,6 @@ use MyTests tests => 8;
     package RoleC;
     use Role::Basic;
     sub baz { 'baz' }
-    ::fake_load;
 }
 {
 
@@ -16,7 +15,6 @@ use MyTests tests => 8;
     use Role::Basic;
     with 'RoleC';
     sub bar { 'bar' }
-    ::fake_load;
 }
 {
 
@@ -24,7 +22,6 @@ use MyTests tests => 8;
     use Role::Basic;
     with 'RoleC';
     sub foo { 'foo' }
-    ::fake_load;
 }
 eval <<'END';
 package Foo;

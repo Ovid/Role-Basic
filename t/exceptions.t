@@ -14,7 +14,6 @@ require Role::Basic;
     sub conflict {
         return "My::Does::Basic::conflict";
     }
-    ::fake_load;
 }
 
 eval { Role::Basic->_load_role('My::Example') };
@@ -75,7 +74,6 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
         package My::Conflict;
         use Role::Basic;
         sub conflict {};
-        ::fake_load;
     }
     eval <<'    END_PACKAGE';
     package My::Bad::MethodConflicts;
@@ -94,7 +92,6 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
         package My::Conflict2;
         use Role::Basic;
         sub conflict {};
-        ::fake_load;
     }
     eval <<'    END_PACKAGE';
     package My::Bad::MethodConflicts2;
@@ -114,7 +111,6 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
         package My::Does::AnotherConflict;
         use Role::Basic;
         sub conflict {};
-        ::fake_load;
     }
     package My::Bad::NoMethodConflicts;
     use Role::Basic 'with';
@@ -131,14 +127,12 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
         use Role::Basic;
         requires 'missing_method';
         sub method1 { 'method1' }
-        ::fake_load;
     }
     {
         package Role2;
         use Role::Basic;
         with 'Role1';
         sub method2 { 'method2' }
-        ::fake_load;
     }
     eval <<"    END";
     package My::Class::Missing1;
@@ -154,7 +148,6 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
         package Role3;
         use Role::Basic;
         requires qw(this that);
-        ::fake_load;
     }
     eval <<"    END";
     package My::Class::Missing2;

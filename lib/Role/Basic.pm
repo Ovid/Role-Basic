@@ -305,6 +305,17 @@ sub _load_role {
     my ( $class, $role, $version ) = @_;
 
     $version ||= '';
+    my $stash = do { no strict 'refs'; \%{"${role}::"} };
+    if ( exists $stash->{requires} ) {
+        my $package = $role;
+        $package =~ s{::}{/}g;
+        $package .= ".pm";
+        if ( not exists $INC{$package} ) {
+
+            # embedded role, not a separate package
+            $INC{"$package"} = "added to inc by $class";
+        }
+    }
     eval "use $role $version";
     Carp::confess($@) if $@;
 

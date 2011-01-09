@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
-use Test::More tests => 27;
 use lib 'lib', 't/lib';
+use MyTests tests => 27;
 require Role::Basic;
 
 {
@@ -13,6 +13,7 @@ require Role::Basic;
     sub method {
         return __PACKAGE__ . " method";
     }
+    ::fake_load;
 }
 {
 
@@ -23,6 +24,7 @@ require Role::Basic;
     sub method2 {
         return __PACKAGE__ . " method2";
     }
+    ::fake_load;
 }
 
 eval <<'END_PACKAGE';
@@ -45,6 +47,7 @@ ok !$@, 'We should be able to use two roles with the same requirements';
     sub method3 {
         return __PACKAGE__ . " method3";
     }
+    ::fake_load;
 }
 
 eval <<'END_PACKAGE';
@@ -85,12 +88,14 @@ ok !$object->DOES('My::Does::Basic1'),
         package Role::Which::Imports;
         use Role::Basic allow => 'TestMethods';
         use TestMethods qw(this that);
+        ::fake_load;
     }
     {
        package Class::With::ImportingRole;
        use Role::Basic 'with';
        with 'Role::Which::Imports';
        sub new { bless {} => shift }
+        ::fake_load;
     }
     my $o = Class::With::ImportingRole->new;
 
@@ -106,12 +111,14 @@ ok !$object->DOES('My::Does::Basic1'),
         package Role::WithImportsOnceRemoved;
         use Role::Basic;
         with 'Role::Which::Imports';
+        ::fake_load;
     }
     {
-       package Class::With::ImportingRole2;
-       use Role::Basic 'with';
-       with 'Role::WithImportsOnceRemoved';
-       sub new { bless {} => shift }
+        package Class::With::ImportingRole2;
+        use Role::Basic 'with';
+        with 'Role::WithImportsOnceRemoved';
+        sub new { bless {} => shift }
+        ::fake_load;
     }
     ok my $o = Class::With::ImportingRole2->new,
         'We should be able to use roles which compose roles which import';

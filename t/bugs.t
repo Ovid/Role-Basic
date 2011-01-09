@@ -1,13 +1,14 @@
 #!/usr/bin/env perl
 
-use Test::More tests => 8;
 use lib 'lib', 't/lib';
+use MyTests tests => 8;
 
 {
 
     package RoleC;
     use Role::Basic;
     sub baz { 'baz' }
+    ::fake_load;
 }
 {
 
@@ -15,6 +16,7 @@ use lib 'lib', 't/lib';
     use Role::Basic;
     with 'RoleC';
     sub bar { 'bar' }
+    ::fake_load;
 }
 {
 
@@ -22,6 +24,7 @@ use lib 'lib', 't/lib';
     use Role::Basic;
     with 'RoleC';
     sub foo { 'foo' }
+    ::fake_load;
 }
 eval <<'END';
 package Foo;

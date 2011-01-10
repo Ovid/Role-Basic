@@ -20,4 +20,4 @@ provides:
 resources:
   license: http://dev.perl.org/licenses/
   repository: https://github.com/Ovid/Role-Basic
-version: 0.07
+version: 0.0701

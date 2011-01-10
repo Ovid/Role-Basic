@@ -12,6 +12,9 @@ t/internals.t
 t/lib/My/Does/Basic.pm
 t/lib/My/Example.pm
 t/lib/TestMethods.pm
+t/moose/003_apply_role.t
+t/moose/004_role_composition_errors.t
+t/moose/005_role_conflict_detection.t
 xt/manifest.t
 xt/pod-coverage.t
 xt/pod.t

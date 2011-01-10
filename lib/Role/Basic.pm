@@ -98,6 +98,13 @@ sub apply_roles_to_package {
     }
 
     my ( %provided_by, %requires );
+
+    my %is_applied;
+
+    foreach my $role (@roles) {
+        $is_applied{$role} = 1 unless ref $role;
+    }
+
     while ( my $role = shift @roles ) {
 
         # will need to verify that they're actually a role!
@@ -131,6 +138,14 @@ sub apply_roles_to_package {
         while ( my ( $method, $data ) = each %$role_methods ) {
             push @{ $provided_by{$method} } => $data;
         }
+
+        # any extra roles contained in applied roles must be added
+        # (helps with conflict resolution)
+        foreach my $contained_role ($class->_roles($role)) {
+            next if $is_applied{$contained_role};
+            push @roles => $contained_role;
+            $is_applied{$contained_role} = 1;
+        }
     }
 
     $class->_check_conflicts( $target, \%provided_by );
@@ -153,7 +168,7 @@ sub _check_conflicts {
         # the consuming class having that method
         if ( @sources > 1 && $target ne _sub_package( $target->can($method) ) )
         {
-            my $sources = join "' and '" => @sources;
+            my $sources = join "' and '" => sort @sources;
             push @errors =>
 "Due to a method name conflict in roles '$sources', the method '$method' must be implemented or excluded by '$target'";
         }
@@ -172,7 +187,7 @@ sub _check_requirements {
     my @errors;
     foreach my $method ( keys %$requires ) {
         unless ( $target->can($method) ) {
-            my $roles = join '|' => @{ $requires->{$method} };
+            my $roles = join '|' => sort @{ $requires->{$method} };
             push @errors =>
 "'$roles' requires the method '$method' to be implemented by '$target'";
         }

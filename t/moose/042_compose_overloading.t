@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use MyTests skip_all => 'Not yet converted';
-
+diag "We will probably not support overloading?";
 {
     package Foo;
     use Role::Basic;

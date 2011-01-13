@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use MyTests skip_all => 'Not yet converted';
+use MyTests skip_all => 'excludes($role) not implemented';
 
 
 use Moose::Meta::Role::Application::RoleSummation;

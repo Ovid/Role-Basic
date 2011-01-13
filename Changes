@@ -2,6 +2,9 @@ Revision history for Role-Basic
 
 0.08
         - Add -version for roles
+        - Bug fix: make sure that -alias doesn't also -exclude
+        - Bug fix: Can't alias over an existing method
+        - Removed a number of Moose tests which don't apply
 
 0.0701  Jan 9, 2011
         - Bug fix: add t/lib to t/composition.t (Marcel Grünauer)

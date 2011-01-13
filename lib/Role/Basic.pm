@@ -230,6 +230,14 @@ sub _add_role_methods_to_target {
         else {
             $code_for->{$new_method} = delete $code_for->{$old_method};
         }
+        my $stash = do { no strict 'refs'; \%{"${target}::"} };
+
+        # We do this because $target->can($new_method) wouldn't be appropriate
+        # since it's OK for a role method to -alias over an inherited one. You
+        # can -alias directly on top of an existing method, though.
+        if ( exists $stash->{$new_method} ) {
+            Carp::confess("Cannot alias '$old_method' to '$new_method' as a method of that name already exists in $target");
+        }
     }
     if ( my $unknown = join ', ' => keys %$conflict_handlers ) {
         Carp::confess("Unknown arguments in 'with()' statement for $role");

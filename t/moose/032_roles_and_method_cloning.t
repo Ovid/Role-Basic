@@ -3,8 +3,7 @@
 use strict;
 use warnings;
 
-use MyTests skip_all => 'Not yet converted';
-
+use MyTests tests => 10;
 
 {
     package Role::Foo;
@@ -21,15 +20,10 @@ use MyTests skip_all => 'Not yet converted';
 }
 
 {
-    my $meth = ClassA->meta->get_method('foo');
+    my $meth = ClassA->can('foo');
     ok( $meth, 'ClassA has a foo method' );
-    isa_ok( $meth, 'Moose::Meta::Method' );
-    is( $meth->original_method, Role::Foo->meta->get_method('foo'),
+    is( $meth, Role::Foo->can('foo'),
         'ClassA->foo was cloned from Role::Foo->foo' );
-    is( $meth->fully_qualified_name, 'ClassA::foo',
-        'fq name is ClassA::foo' );
-    is( $meth->original_fully_qualified_name, 'Role::Foo::foo',
-        'original fq name is Role::Foo::foo' );
 }
 
 {
@@ -41,14 +35,10 @@ use MyTests skip_all => 'Not yet converted';
 }
 
 {
-    my $meth = Role::Bar->meta->get_method('foo');
+    my $meth = Role::Bar->can('foo');
     ok( $meth, 'Role::Bar has a foo method' );
-    is( $meth->original_method, Role::Foo->meta->get_method('foo'),
+    is( $meth, Role::Foo->can('foo'),
         'Role::Bar->foo was cloned from Role::Foo->foo' );
-    is( $meth->fully_qualified_name, 'Role::Bar::foo',
-        'fq name is Role::Bar::foo' );
-    is( $meth->original_fully_qualified_name, 'Role::Foo::foo',
-        'original fq name is Role::Foo::foo' );
 }
 
 {
@@ -59,16 +49,12 @@ use MyTests skip_all => 'Not yet converted';
 }
 
 {
-    my $meth = ClassB->meta->get_method('foo');
+    my $meth = ClassB->can('foo');
     ok( $meth, 'ClassB has a foo method' );
-    is( $meth->original_method, Role::Bar->meta->get_method('foo'),
+    is( $meth, Role::Bar->can('foo'),
         'ClassA->foo was cloned from Role::Bar->foo' );
-    is( $meth->original_method->original_method, Role::Foo->meta->get_method('foo'),
+    is( $meth, Role::Foo->can('foo'),
         '... which in turn was cloned from Role::Foo->foo' );
-    is( $meth->fully_qualified_name, 'ClassB::foo',
-        'fq name is ClassA::foo' );
-    is( $meth->original_fully_qualified_name, 'Role::Foo::foo',
-        'original fq name is Role::Foo::foo' );
 }
 
 isnt( ClassA->foo, "ClassB::foo", "ClassA::foo is not confused with ClassB::foo");

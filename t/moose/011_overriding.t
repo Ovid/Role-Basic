@@ -4,7 +4,6 @@ use strict;
 use warnings;
 
 use MyTests 'no_plan';
-#use MyTests skip_all => 'Not yet converted';
 
 {
     # test no conflicts here

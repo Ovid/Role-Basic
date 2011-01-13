@@ -228,7 +228,7 @@ sub _add_role_methods_to_target {
             );
         }
         else {
-            $code_for->{$new_method} = delete $code_for->{$old_method};
+            $code_for->{$new_method} = $code_for->{$old_method};
         }
         my $stash = do { no strict 'refs'; \%{"${target}::"} };
 

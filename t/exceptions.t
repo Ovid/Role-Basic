@@ -101,8 +101,8 @@ qr/Role 'My::Does::Basic' not overriding method 'conflict' in 'My::Bad::Override
     sub turbo_charger {}
     END_PACKAGE
     like $@,
-    qr/\QRole 'My::Conflict2' not overriding method 'turbo_charger' in 'My::Bad::MethodConflicts2'/,
-      'Trying to alias a conflicting method to an existing one in the package should fail if PERL_ROLE_OVERRIDE_DIE is set';
+    qr/\QCannot alias 'conflict' to 'turbo_charger' as a method of that name already exists in My::Bad::MethodConflicts2/,
+      'Trying to alias a conflicting method to an existing one in the package should fail';
 }
 
 {

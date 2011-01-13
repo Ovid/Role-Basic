@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use MyTests skip_all => 'Not yet converted';
+use MyTests tests => 46;
 
 {
     package My::Role;
@@ -27,12 +27,12 @@ use MyTests skip_all => 'Not yet converted';
 
     ::like( ::exception {
         with 'My::Role' => { -alias => { bar => 'role_bar' } };
-    }, qr/Cannot create a method alias if a local method of the same name exists/, '... this succeeds' );
+    }, qr/Cannot alias 'bar' to 'role_bar' as a method of that name already exists in My::Class::Failure/, '... this succeeds' );
 
     sub role_bar { 'FAIL' }
 }
 
-ok(My::Class->meta->has_method($_), "we have a $_ method") for qw(foo baz bar role_bar);
+ok(My::Class->can($_), "we have a $_ method") for qw(foo baz bar role_bar);
 
 {
     package My::OtherRole;
@@ -49,14 +49,17 @@ ok(My::Class->meta->has_method($_), "we have a $_ method") for qw(foo baz bar ro
 
     ::like( ::exception {
         with 'My::Role' => { -alias => { bar => 'role_bar' } };
-    }, qr/Cannot create a method alias if a local method of the same name exists/, '... cannot alias to a name that exists' );
+    }, qr/Cannot alias 'bar' to 'role_bar' as a method of that name already exists in My::OtherRole::Failure/, '... cannot alias to a name that exists' );
 
     sub role_bar { 'FAIL' }
 }
 
-ok(My::OtherRole->meta->has_method($_), "we have a $_ method") for qw(foo baz role_bar);
-ok(My::OtherRole->meta->requires_method('bar'), '... and the &bar method is required');
-ok(!My::OtherRole->meta->requires_method('role_bar'), '... and the &role_bar method is not required');
+ok(My::OtherRole->can($_), "we have a $_ method") for qw(foo baz role_bar);
+TODO: {
+    local $TODO = 'Still unsure if this behavior us needed. Failure provides no guarantees';
+    ok(Role::Basic->requires_method("My::OtherRole", 'bar'), '... and the &bar method is required');
+    ok(!Role::Basic->requires_method("My::OtherRole", 'role_bar'), '... and the &role_bar method is not required');
+}
 
 {
     package My::AliasingRole;
@@ -67,8 +70,8 @@ ok(!My::OtherRole->meta->requires_method('role_bar'), '... and the &role_bar met
     }, undef, '... this succeeds' );
 }
 
-ok(My::AliasingRole->meta->has_method($_), "we have a $_ method") for qw(foo baz role_bar);
-ok(!My::AliasingRole->meta->requires_method('bar'), '... and the &bar method is not required');
+ok(My::AliasingRole->can($_), "we have a $_ method") for qw(foo baz role_bar);
+ok(!Role::Basic->requires_method("My::AliasingRole", 'bar'), '... and the &bar method is not required');
 
 {
     package Foo::Role;
@@ -88,6 +91,7 @@ ok(!My::AliasingRole->meta->requires_method('bar'), '... and the &bar method is 
 
     package My::Foo::Class;
     use Role::Basic 'with';
+    sub new { bless {} => shift }
 
     ::is( ::exception {
         with 'Foo::Role' => { -alias => { 'foo' => 'foo_foo' }, -excludes => 'foo' },
@@ -98,11 +102,13 @@ ok(!My::AliasingRole->meta->requires_method('bar'), '... and the &bar method is 
     package My::Foo::Class::Broken;
     use Role::Basic 'with';
 
+    # XXX due to how we're structured, we hit the 'alias' error before the
+    # "method conflict" error which Moose gets
     ::like( ::exception {
         with 'Foo::Role' => { -alias => { 'foo' => 'foo_foo' }, -excludes => 'foo' },
              'Bar::Role' => { -alias => { 'foo' => 'foo_foo' }, -excludes => 'foo' },
              'Baz::Role';
-    }, qr/Due to a method name conflict in roles 'Bar::Role' and 'Foo::Role', the method 'foo_foo' must be implemented or excluded by 'My::Foo::Class::Broken'/, '... composed our roles correctly' );
+    }, qr/Cannot alias 'foo' to 'foo_foo' as a method of that name already exists in My::Foo::Class::Broken/, '... composed our roles correctly' );
 }
 
 {
@@ -125,23 +131,28 @@ ok(!My::AliasingRole->meta->requires_method('bar'), '... and the &bar method is 
     }, undef, '... composed our roles correctly' );
 }
 
-ok(My::Foo::Role->meta->has_method($_), "we have a $_ method") for qw/foo foo_foo bar_foo/;;
-ok(!My::Foo::Role->meta->requires_method('foo'), '... and the &foo method is not required');
+ok(My::Foo::Role->can($_), "we have a $_ method") for qw/foo foo_foo bar_foo/;;
+ok(!Role::Basic->requires_method("My::Foo::Role", 'foo'), '... and the &foo method is not required');
 
 
 {
     package My::Foo::Role::Other;
     use Role::Basic;
 
-    ::is( ::exception {
+    # XXX again, we propogate errors immediately rather than generating
+    # requirements
+    ::isnt( ::exception {
         with 'Foo::Role' => { -alias => { 'foo' => 'foo_foo' }, -excludes => 'foo' },
              'Bar::Role' => { -alias => { 'foo' => 'foo_foo' }, -excludes => 'foo' },
              'Baz::Role';
     }, undef, '... composed our roles correctly' );
 }
 
-ok(!My::Foo::Role::Other->meta->has_method('foo_foo'), "we dont have a foo_foo method");
-ok(My::Foo::Role::Other->meta->requires_method('foo_foo'), '... and the &foo method is required');
+TODO: {
+    local $TODO = 'We probably should make no guarantees on failure';
+    ok(!My::Foo::Role::Other->can('foo_foo'), "we dont have a foo_foo method");
+    ok(Role::Basic->requires_method("My::Foo::Role::Other", 'foo_foo'), '... and the &foo method is required');
+}
 
 {
     package My::Foo::AliasOnly;
@@ -152,8 +163,8 @@ ok(My::Foo::Role::Other->meta->requires_method('foo_foo'), '... and the &foo met
     }, undef, '... composed our roles correctly' );
 }
 
-ok(My::Foo::AliasOnly->meta->has_method('foo'), 'we have a foo method');
-ok(My::Foo::AliasOnly->meta->has_method('foo_foo'), '.. and the aliased foo_foo method');
+ok(My::Foo::AliasOnly->can('foo'), 'we have a foo method');
+ok(My::Foo::AliasOnly->can('foo_foo'), '.. and the aliased foo_foo method');
 
 {
     package Role::Foo;
@@ -179,8 +190,7 @@ ok(My::Foo::AliasOnly->meta->has_method('foo_foo'), '.. and the aliased foo_foo 
 }
 
 {
-    my $bar = Role::Bar->meta;
-    ok( $bar->has_method($_), "has $_ method" )
+    ok( Role::Bar->can($_), "can $_ method" )
         for qw( x1 y1 foo_x1 );
 }
 
@@ -197,10 +207,7 @@ ok(My::Foo::AliasOnly->meta->has_method('foo_foo'), '.. and the aliased foo_foo 
 }
 
 {
-    my $baz = Role::Baz->meta;
-    ok( $baz->has_method($_), "has $_ method" )
+    ok( Role::Baz->can($_), "has $_ method" )
         for qw( x1 foo_x1 );
-    ok( ! $baz->has_method('y1'), 'Role::Baz has no y1 method' );
+    ok( ! Role::Baz->can('y1'), 'Role::Baz has no y1 method' );
 }
-
-

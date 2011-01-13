@@ -3,9 +3,7 @@
 use strict;
 use warnings;
 
-use MyTests skip_all => 'Not yet converted';
-
-
+use MyTests tests => 9;
 
 {
     package Foo;
@@ -44,6 +42,7 @@ use MyTests skip_all => 'Not yet converted';
 {
     package My::Class;
     use Role::Basic 'with';
+    sub new { bless {} => shift }
 
     ::is( ::exception {
         with 'Foo'   => { -excludes => [qw/bar baz gorch/], -alias => { gorch => 'foo_gorch' } },

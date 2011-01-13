@@ -3,7 +3,8 @@
 use strict;
 use warnings;
 
-use MyTests skip_all => 'Not yet converted';
+use MyTests 'no_plan';
+#use MyTests skip_all => 'Not yet converted';
 
 {
     # test no conflicts here
@@ -117,46 +118,20 @@ is( Class::A::Resolved->new->bar, 'Class::A::Resolved::bar', "... got the right 
     use Role::Basic 'with';
     sub new { bless {} => shift }
 
-    ::is( ::exception {
+    # XXX this is different from Moose. Traits are required, amongst other
+    # things, as being "associative". Moose breaks with that. We keep this
+    # behavior (for now) as it's easier to be restrictive and let up than the
+    # other way around. See
+    # http://blogs.perl.org/users/ovid/2011/01/rolebasic-what-is-a-conflict.html
+    # for more detail.
+    ::like( ::exception {
         with qw(Role::F);
-    }, undef, "define class Class::B" );
+    }, qr/\QDue to a method name conflict in roles 'Role::D' and 'Role::E' and 'Role::F', the method 'foo' must be implemented or excluded by 'Class::B'/, "define class Class::B" );
 
     sub zot { 'Class::B::zot' }
 }
 
-__END__
-can_ok( Class::B->new, qw(foo bar xxy zot) );
-
-is( Class::B->new->foo, "Role::F::foo",  "... got the &foo method okay" );
-is( Class::B->new->zot, "Class::B::zot", "... got the &zot method okay" );
-is( Class::B->new->bar, "Role::D::bar",  "... got the &bar method okay" );
-is( Class::B->new->xxy, "Role::E::xxy",  "... got the &xxy method okay" );
-
-ok(!Role::Basic->requires_method('Role::F','foo'), '... Role::F fufilled the &foo requirement');
-
-{
-    # check that a conflict can be resolved
-    # by a role, but also new ones can be
-    # created just as easily ...
-
-    package Role::D::And::E::Conflict;
-    use Role::Basic;
-
-    ::is( ::exception {
-        with qw(Role::D Role::E); # conflict between 'foo's here
-    }, undef, "... define role Role::D::And::E::Conflict" );
-
-    sub foo { 'Role::D::And::E::Conflict::foo' }  # this overrides ...
-
-    # but these conflict
-    sub xxy { 'Role::D::And::E::Conflict::xxy' }
-    sub bar { 'Role::D::And::E::Conflict::bar' }
-
-}
-
-ok(!Role::Basic->requires_method('Role::D::And::E::Conflict', 'foo'), '... Role::D::And::E::Conflict fufilled the &foo requirement');
-ok( Role::Basic->requires_method('Role::D::And::E::Conflict', 'xxy'), '... Role::D::And::E::Conflict adds the &xxy requirement');
-ok( Role::Basic->requires_method('Role::D::And::E::Conflict', 'bar'), '... Role::D::And::E::Conflict adds the &bar requirement');
+# XXX lots of Moose tests deleted as they don't apply to Role::Basic
 
 {
     # conflict propagation
@@ -176,7 +151,12 @@ ok( Role::Basic->requires_method('Role::D::And::E::Conflict', 'bar'), '... Role:
     package Role::I;
     use Role::Basic;
 
-    ::is( ::exception {
+    # XXX another difference with Moose. Originally we deferred conflicts to
+    # the consuming class, but their was no syntax to allow the class to
+    # understand the role's composition and pick it apart (i.e., exclude
+    # methods from the roles this role consumed). Thus, we throw an exception
+    # as it's safer.
+    ::isnt( ::exception {
         with qw(Role::J Role::H); # conflict between 'foo's here
     }, undef, "define role Role::I" );
 
@@ -211,14 +191,21 @@ is( Class::E->new->zot, "Class::E::zot", "... got the right &zot method" );
 is( Class::E->new->bar, "Role::H::bar",  "... got the right &bar method" );
 is( Class::E->new->xxy, "Role::J::xxy",  "... got the right &xxy method" );
 
-ok(Role::Basic->requires_method('Role::I', 'foo'), '... Role::I still have the &foo requirement');
+TODO: {
+    local $TODO = 'We do not convert conflicts to requirements. Should we?';
+    ok(
+        Role::Basic->requires_method( 'Role::I', 'foo' ),
+        '... Role::I still have the &foo requirement'
+    );
+}
 
 {
     is( exception {
         package Class::D;
         use Role::Basic 'with';
+        sub new { bless {} => shift }
 
-        sub foo { __PACKAGE__ }
+        sub foo { "Class::D::foo" }
 
         sub zot { 'Class::D::zot' }
 

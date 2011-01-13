@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use MyTests 'no_plan';
+use MyTests tests => 29;
 
 {
     # test no conflicts here

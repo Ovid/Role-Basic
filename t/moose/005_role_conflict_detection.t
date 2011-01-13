@@ -40,7 +40,6 @@ Mutually recursive roles.
     package My::Test2;
     use Role::Basic 'with';
     sub new { bless {} => shift }
-    sub new { {} => shift }
 
     ::is( ::exception {
         with 'Role::Bar', 'Role::Foo';

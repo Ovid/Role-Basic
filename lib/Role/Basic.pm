@@ -105,24 +105,29 @@ sub apply_roles_to_package {
         $is_applied{$role} = 1 unless ref $role;
     }
 
+    # these are roles which a class does not use directly, but are contained in
+    # the roles the class consumes.
+    my %contained_roles;
+
     while ( my $role = shift @roles ) {
 
         # will need to verify that they're actually a role!
 
-        my $conflict_handlers = shift @roles if ref $roles[0];
-        $conflict_handlers ||= {};
-        $class->_load_role( $role, delete $conflict_handlers->{'-version'} );
+        my $role_modifiers = shift @roles if ref $roles[0];
+        $role_modifiers ||= {};
+        $class->_load_role( $role, delete $role_modifiers->{'-version'} );
 
         # XXX this is awful. Don't tell anyone I wrote this
-        $HAS_ROLES{$target}{$role} = 1;
+        $HAS_ROLES{$target}{$role} = $role_modifiers;
         my $role_methods = $class->_add_role_methods_to_target( 
             $role,
             $target,
-            $conflict_handlers
+            $role_modifiers
         );
+
         if ( my $roles = $HAS_ROLES{$role} ) {
             foreach my $role ( keys %$roles ) {
-                $HAS_ROLES{$target}{$role} = 1;
+                $HAS_ROLES{$target}{$role} = $roles->{$role};
             }
         }
 
@@ -143,16 +148,22 @@ sub apply_roles_to_package {
         # (helps with conflict resolution)
         foreach my $contained_role ($class->_roles($role)) {
             next if $is_applied{$contained_role};
-            push @roles => $contained_role;
+            $contained_roles{$contained_role} = 1;
             $is_applied{$contained_role} = 1;
         }
+    }
+    foreach my $contained_role (keys %contained_roles) {
+        foreach my $method ( $class->get_requirements($contained_role) ) {
+            push @{ $requires{$method} } => $contained_role;
+        }
+        # a role is not a name. A role is a role plus its alias/exclusion. We
+        # now store those in $HAS_ROLE (somewhat), so pull from them
     }
 
     $class->_check_conflicts( $target, \%provided_by );
     $class->_check_requirements( $target, \%requires );
 }
 
-# XXX no dependencies if we can avoid it, thank you
 sub _uniq (@) {
     my %seen = ();
     grep { not $seen{$_}++ } @_;
@@ -198,29 +209,14 @@ sub _check_requirements {
 }
 
 sub _add_role_methods_to_target {
-    my ( $class, $role, $target, $conflict_handlers ) = @_;
+    my ( $class, $role, $target, $role_modifiers, $dont_apply ) = @_;
 
     my $target_methods = $class->_get_methods($target);
     my $code_for       = $class->_get_methods($role);
 
-    # figure out which methods to exclude
-    my $excludes = delete $conflict_handlers->{'-excludes'} || [];
-    $excludes = [$excludes] unless ref $excludes;
-    unless ( 'ARRAY' eq ref $excludes ) {
-        Carp::confess(
-"Argument to '-excludes' in package $target must be a scalar or array reference"
-        );
-    }
-    my %is_excluded = map { $_ => 1 } @$excludes;
+    my ( $is_excluded, $aliases ) =
+      $class->_get_excludes_and_aliases( $target, $role, $role_modifiers );
 
-    # rename methods to alias
-    my $aliases = delete $conflict_handlers->{'-alias'};
-    $aliases ||= {};
-    unless ( 'HASH' eq ref $aliases ) {
-        Carp::confess(
-            "Argument to '-alias' in package $target must be a hash reference"
-        );
-    }
     while ( my ( $old_method, $new_method ) = each %$aliases ) {
         if ( exists $code_for->{$new_method} ) {
             Carp::confess(
@@ -239,13 +235,11 @@ sub _add_role_methods_to_target {
             Carp::confess("Cannot alias '$old_method' to '$new_method' as a method of that name already exists in $target");
         }
     }
-    if ( my $unknown = join ', ' => keys %$conflict_handlers ) {
-        Carp::confess("Unknown arguments in 'with()' statement for $role");
-    }
 
     foreach my $method ( keys %$code_for ) {
-        if ( $is_excluded{$method} ) {
+        if ( $is_excluded->{$method} ) {
             delete $code_for->{$method};
+            $class->add_to_requirements( $target, $method );
             next;
         }
 
@@ -263,12 +257,48 @@ sub _add_role_methods_to_target {
             next;
         }
 
-        # XXX we're going to handle this ourselves
-        no strict 'refs';
-        no warnings 'redefine';
-        *{"${target}::$method"} = $code_for->{$method}{code};
+        unless ($dont_apply) {
+            # XXX we're going to handle this ourselves
+            no strict 'refs';
+            no warnings 'redefine';
+            *{"${target}::$method"} = $code_for->{$method}{code};
+        }
     }
     return $code_for;
+}
+
+sub _get_excludes_and_aliases {
+    my ( $class, $target, $role, $role_modifiers ) = @_;
+    # figure out which methods to exclude
+    my $excludes = delete $role_modifiers->{'-excludes'} || [];
+    my $aliases  = delete $role_modifiers->{'-alias'}    || {};
+    my $renames  = delete $role_modifiers->{'-rename'}   || {};
+
+    $excludes = [$excludes] unless ref $excludes;
+    my %is_excluded = map { $_ => 1 } @$excludes;
+
+    while ( my ( $old_method, $new_method ) = each %$renames ) {
+        $is_excluded{$old_method} = 1;
+        $aliases->{$old_method} = $new_method;
+    }
+
+    unless ( 'ARRAY' eq ref $excludes ) {
+        Carp::confess(
+"Argument to '-excludes' in package $target must be a scalar or array reference"
+        );
+    }
+
+    # rename methods to alias
+    unless ( 'HASH' eq ref $aliases ) {
+        Carp::confess(
+            "Argument to '-alias' in package $target must be a hash reference"
+        );
+    }
+
+    if ( my $unknown = join ', ' => keys %$role_modifiers ) {
+        Carp::confess("Unknown arguments in 'with()' statement for $role");
+    }
+    return ( \%is_excluded, $aliases );
 }
 
 # We can cache this at some point, but for now, the return value is munged
@@ -489,6 +519,25 @@ the following line to the package:
 
 Just as with L<Moose>, you can have C<-alias>, C<-excludes>, and C<-version>.
 
+Unlike Moose, we also provide a C<-rename> target.  It combines C<-alias> and
+C<-excludes>. This code:
+
+    package My::Class;
+    use Role::Basic 'with';
+
+    with 'My::Role' => {
+        -rename => { foo => 'baz', bar => 'gorch' },
+    };
+
+Is identical to this code:
+
+    package My::Class;
+    use Role::Basic 'with';
+
+    with 'My::Role' => {
+        -alias    => { foo => 'baz', bar => 'gorch' },
+        -excludes => [qw/foo bar/],
+    };
 =head1 EXPORT
 
 Both roles and classes will receive the following methods:

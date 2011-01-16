@@ -1,6 +1,11 @@
 Revision history for Role-Basic
 
+The token "[!Moose]" documents features which diverge from Moose.
+
 0.08
+        - [!Moose] Excluded methods are now required. See
+          [https://rt.cpan.org/Public/Bug/Display.html?id=45591] in Moose.
+        - [!Moose] Added -rename, a combination of -alias and -excludes.
         - Add -version for roles
         - Bug fix: make sure that -alias doesn't also -exclude
         - Bug fix: Can't alias over an existing method
@@ -38,4 +43,3 @@ Revision history for Role-Basic
 
 0.01    Dec 28, 2010    
         - Minimal role support with a Moose-like syntax
-

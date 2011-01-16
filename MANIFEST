@@ -21,8 +21,6 @@ t/moose/012_method_exclusion_in_composition.t
 t/moose/013_method_aliasing_in_composition.t
 t/moose/014_more_alias_and_exclude.t
 t/moose/021_role_composite_exclusion.t
-t/moose/022_role_composition_req_methods.t
-t/moose/024_role_composition_methods.t
 t/moose/025_role_composition_override.t
 t/moose/032_roles_and_method_cloning.t
 t/moose/033_role_exclusion_and_alias_bug.t

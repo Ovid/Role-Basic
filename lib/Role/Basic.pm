@@ -6,11 +6,16 @@ use strict;
 use warnings FATAL => 'all';
 
 use B qw/svref_2object/;
+use Storable ();
 use Carp ();
+use Data::Dumper ();
 
 our $VERSION = '0.08';
 
-my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ROLE_ALLOWS, %ALLOWED_BY );
+my (
+    %IS_ROLE,     %REQUIRED_BY, %HAS_ROLES,
+    %ROLE_ALLOWS, %ALLOWED_BY,  %PROVIDED_BY
+);
 
 sub import {
     my $class  = shift;
@@ -25,7 +30,7 @@ sub import {
         my ( $proto, $role ) = @_;
         my $class_or_role = ref $proto || $proto;
         return 1 if $class_or_role eq $role;
-        return $HAS_ROLES{$class_or_role}{$role};
+        return exists $HAS_ROLES{$class_or_role}{$role} ? 1 : 0;
     };
     if ( 1 == @_ && 'with' eq $_[0] ) {
 
@@ -68,7 +73,7 @@ sub add_to_requirements {
       grep { not $seen{$_}++ } @{ $REQUIRED_BY{$role} };
 }
 
-sub get_requirements {
+sub get_required_by {
     my ( $class, $role ) = @_;
     return unless my $requirements = $REQUIRED_BY{$role};
     return @$requirements;
@@ -77,7 +82,7 @@ sub get_requirements {
 sub requires_method {
     my ( $class, $role, $method ) = @_;
     return unless $IS_ROLE{$role};
-    my %requires = map { $_ => 1 } $class->get_requirements($role);
+    my %requires = map { $_ => 1 } $class->get_required_by($role);
     return $requires{$method};
 }
 
@@ -85,8 +90,13 @@ sub _roles {
     my ( $class, $target ) = @_;
     return unless $HAS_ROLES{$target};
     my @roles;
+    my %seen;
     foreach my $role ( keys %{ $HAS_ROLES{$target} } ) {
-        push @roles => $role, $class->_roles($role);
+        my $modifiers = $HAS_ROLES{$target}{$role};
+        my $role_name = $class->_get_role_name($role,$modifiers);
+        unless ( $seen{$role_name} ) {
+            push @roles => $role_name, $class->_roles($role);
+        }
     }
     return @roles;
 }
@@ -101,8 +111,12 @@ sub apply_roles_to_package {
 
     my %is_applied;
 
-    foreach my $role (@roles) {
-        $is_applied{$role} = 1 unless ref $role;
+    foreach my $i ( 0 .. $#roles ) {
+        my $role = $roles[$i];
+        next if ref $role;
+        my $modifiers = ref $roles[ $i + 1 ] ? $roles[ $i + 1 ] : {};
+        my $role_name = $class->_get_role_name( $role, $modifiers );
+        $is_applied{$role_name} = 1;
     }
 
     # these are roles which a class does not use directly, but are contained in
@@ -115,30 +129,31 @@ sub apply_roles_to_package {
 
         my $role_modifiers = shift @roles if ref $roles[0];
         $role_modifiers ||= {};
-        $class->_load_role( $role, delete $role_modifiers->{'-version'} );
+        my $role_name = $class->_get_role_name( $role, $role_modifiers );
+        $class->_load_role( $role, $role_modifiers->{'-version'} );
 
         # XXX this is awful. Don't tell anyone I wrote this
-        $HAS_ROLES{$target}{$role} = $role_modifiers;
         my $role_methods = $class->_add_role_methods_to_target( 
             $role,
             $target,
             $role_modifiers
         );
 
+        # DOES() in some cases
         if ( my $roles = $HAS_ROLES{$role} ) {
             foreach my $role ( keys %$roles ) {
                 $HAS_ROLES{$target}{$role} = $roles->{$role};
             }
         }
 
-        foreach my $method ( $class->get_requirements($role) ) {
+        foreach my $method ( $class->get_required_by($role) ) {
             push @{ $requires{$method} } => $role;
         }
 
         # roles consuming roles should have the same requirements.
         if ( $IS_ROLE{$target} ) {
             $class->add_to_requirements( $target,
-                $class->get_requirements($role) );
+                $class->get_required_by($role) );
         }
         while ( my ( $method, $data ) = each %$role_methods ) {
             push @{ $provided_by{$method} } => $data;
@@ -146,18 +161,25 @@ sub apply_roles_to_package {
 
         # any extra roles contained in applied roles must be added
         # (helps with conflict resolution)
-        foreach my $contained_role ($class->_roles($role)) {
+        foreach my $contained_role ( $class->_roles($role) ) {
             next if $is_applied{$contained_role};
             $contained_roles{$contained_role} = 1;
-            $is_applied{$contained_role} = 1;
+            $is_applied{$contained_role}      = 1;
         }
     }
+
     foreach my $contained_role (keys %contained_roles) {
-        foreach my $method ( $class->get_requirements($contained_role) ) {
-            push @{ $requires{$method} } => $contained_role;
+        my ( $role, $modifiers ) = split /-/ => $contained_role, 2;
+        foreach my $method ( $class->get_required_by($role) ) {
+            push @{ $requires{$method} } => $role;
         }
         # a role is not a name. A role is a role plus its alias/exclusion. We
-        # now store those in $HAS_ROLE (somewhat), so pull from them
+        # now store those in $HAS_ROLE so pull from them
+        if ( my $methods = $PROVIDED_BY{$contained_role} ) {
+            foreach my $method (keys %$methods) {
+                push @{ $provided_by{$method} } => { source => $role };
+            }
+        }
     }
 
     $class->_check_conflicts( $target, \%provided_by );
@@ -208,15 +230,28 @@ sub _check_requirements {
     }
 }
 
+sub _get_role_name {
+    my ( $class, $role, $modifiers ) = @_;
+    local $Data::Dumper::Indent   = 0;
+    local $Data::Dumper::Terse    = 1;
+    local $Data::Dumper::Sortkeys = 1;
+    return "$role-" . Data::Dumper::Dumper($modifiers);
+}
+
 sub _add_role_methods_to_target {
     my ( $class, $role, $target, $role_modifiers, $dont_apply ) = @_;
+
+    my $copied_modifiers = Storable::dclone($role_modifiers);
+    my $role_name = $class->_get_role_name( $role, $copied_modifiers );
 
     my $target_methods = $class->_get_methods($target);
     my $code_for       = $class->_get_methods($role);
 
+    delete $role_modifiers->{'-version'};
     my ( $is_excluded, $aliases ) =
       $class->_get_excludes_and_aliases( $target, $role, $role_modifiers );
 
+    my $stash = do { no strict 'refs'; \%{"${target}::"} };
     while ( my ( $old_method, $new_method ) = each %$aliases ) {
         if ( exists $code_for->{$new_method} ) {
             Carp::confess(
@@ -226,7 +261,6 @@ sub _add_role_methods_to_target {
         else {
             $code_for->{$new_method} = $code_for->{$old_method};
         }
-        my $stash = do { no strict 'refs'; \%{"${target}::"} };
 
         # We do this because $target->can($new_method) wouldn't be appropriate
         # since it's OK for a role method to -alias over an inherited one. You
@@ -262,8 +296,10 @@ sub _add_role_methods_to_target {
             no strict 'refs';
             no warnings 'redefine';
             *{"${target}::$method"} = $code_for->{$method}{code};
+            $PROVIDED_BY{$role_name}{$method} = 1;
         }
     }
+    $HAS_ROLES{$target}{$role} = $copied_modifiers;
     return $code_for;
 }
 

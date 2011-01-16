@@ -132,7 +132,8 @@ ok(!Role::Basic->requires_method("My::AliasingRole", 'bar'), '... and the &bar m
 }
 
 ok(My::Foo::Role->can($_), "we have a $_ method") for qw/foo foo_foo bar_foo/;;
-ok(!Role::Basic->requires_method("My::Foo::Role", 'foo'), '... and the &foo method is not required');
+# XXX [!Moose]
+ok(Role::Basic->requires_method("My::Foo::Role", 'foo'), '... and the &foo method is required');
 
 
 {

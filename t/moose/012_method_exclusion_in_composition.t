@@ -33,12 +33,10 @@ ok(!My::Class->can('bar'), '... but we excluded bar');
 }
 
 ok(My::OtherRole->can($_), "we have a $_ method") for qw(foo bar baz);
-
-TODO: {
-    local $TODO = 'Why is one required and the other not?';
-    ok(!Role::Basic->requires_method("My::OtherRole", 'foo'), '... and the &foo method is not required');
-    ok(Role::Basic->requires_method("My::OtherRole", 'bar'), '... and the &bar method is required');
-}
+# XXX [!Moose]
+ok(Role::Basic->requires_method("My::OtherRole", 'foo'), 'Excluded methods should be required');
+# XXX [!Moose]
+ok(!Role::Basic->requires_method("My::OtherRole", 'bar'), '... but provided methods should not');
 
 {
     package Foo::Role;
@@ -95,7 +93,9 @@ TODO: {
 }
 
 ok(My::Foo::Role->can('foo'), "we have a foo method");
-ok(!Role::Basic->requires_method("My::Foo::Role", 'foo'), '... and the &foo method is not required');
+
+# XXX [!Moose]
+ok(Role::Basic->requires_method("My::Foo::Role", 'foo'), '... and the excluded &foo method is required');
 
 {
     package My::Foo::Role::Other;
@@ -113,5 +113,5 @@ ok(!Role::Basic->requires_method("My::Foo::Role", 'foo'), '... and the &foo meth
 TODO: {
     local $TODO = 'We probably should make no guarantees about these failures';
     ok(!My::Foo::Role::Other->can('foo'), "we dont have a foo method");
-    ok(Role::Basic->requires_method("My::Foo::Role::Other", 'foo'), '... and the &foo method is required');
 }
+ok(Role::Basic->requires_method("My::Foo::Role::Other", 'foo'), '... and the &foo method is required');

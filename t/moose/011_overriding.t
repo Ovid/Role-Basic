@@ -60,9 +60,12 @@ is( Class::A->new->xxy, "Role::B::xxy",  "... got the right xxy method" );
     package Class::A::Conflict;
     use Role::Basic 'with';
 
-    ::like( ::exception {
-        with 'Role::A::Conflict';
-    }, qr/Due to a method name conflict in roles 'Role::A' and 'Role::A::Conflict', the method 'bar' must be implemented or excluded by 'Class::A::Conflict'/, '... did not fufill the requirement of &bar method' );
+    ::like(
+        ::exception{ with 'Role::A::Conflict';
+          },
+qr/Due to a method name conflict in roles 'Role::A' and 'Role::A::Conflict', the method 'bar' must be implemented or excluded by 'Class::A::Conflict'/,
+        '... did not fulfill the requirement of &bar method'
+    );
 
     package Class::A::Resolved;
     use Role::Basic 'with';

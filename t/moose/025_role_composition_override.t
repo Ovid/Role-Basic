@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use MyTests skip_all => 'Not yet converted';
+use MyTests skip_all => 'override($method) not supported (and may not be)';
 
 
 use Moose::Meta::Role::Application::RoleSummation;

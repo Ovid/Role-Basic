@@ -581,6 +581,7 @@ Is identical to this code:
         -alias    => { foo => 'baz', bar => 'gorch' },
         -excludes => [qw/foo bar/],
     };
+
 =head1 EXPORT
 
 Both roles and classes will receive the following methods:

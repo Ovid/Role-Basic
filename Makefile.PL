@@ -8,7 +8,8 @@ WriteMakefile
   'EXE_FILES' => [],
   'VERSION_FROM' => 'lib/Role/Basic.pm',
   'PREREQ_PM' => {
-                   'Test::More' => 0
+                   'Test::More' => 0,
+                   'Storable' => '2.15'
                  }
 )
 ;

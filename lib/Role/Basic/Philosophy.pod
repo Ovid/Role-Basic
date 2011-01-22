@@ -16,20 +16,21 @@ between L<Role::Basic> and L<Moose::Role>.
 L<Moose> is a fantastic technology and your author is quite happy with it. He
 urges you to check it out and perhaps even consider L<Role::Basic> a
 "stepping-stone" to L<Moose>.  However, after an informal poll with many
-repondents replying on blogs.perl.org, Twitter, Facebook and private email
+respondents replying on blogs.perl.org, Twitter, Facebook and private email
 I<unanimously> saying they wanted this module for roles and not as a
 stepping-stone to Moose, your author took the liberty of deciding to implement
-I<traits> in a rather faithful fashion, rather than strictly adher to the
-design of L<Moose::Role>.  For differences, L<Role::Basic> intends to be more
-restrictive when syntax is the same. This allows an easier migration to
-L<Moose::Role> when the time is right.
+I<traits> in a rather faithful fashion, rather than strictly adhere to the
+design of L<Moose::Role>.  For areas where we differ, L<Role::Basic> intends
+to be more restrictive when syntax is the same. This allows an easier
+migration to L<Moose::Role> when the time is right. Otherwise, L<Role::Basic>
+will offer a different syntax to avoid confusion.
 
 =head1 TRAITS
 
-As most of you probably know, roles are the Perl implmentation of traits,
-L<http://scg.unibe.ch/research/traits/>.  (The name "role" was chosen because
-"trait" was already used in Perl 6.)  In particular, we direct you to two
-papers, both of which are easy to read:
+As most of you probably know, roles are the Perl implmentation of traits as
+described in L<http://scg.unibe.ch/research/traits/>.  (The name "role" was
+chosen because "trait" was already used in Perl 6.)  In particular, we direct
+you to two papers, both of which are easy to read:
 
 =over 4
 
@@ -57,16 +58,17 @@ merely an attempt to alert the reader to key differences.
 
 Roles are simply bundles of behavior which classes may use. If you have two
 completely unrelated classes, your code may still require each of them to
-serialize themselves as JSON.  There are a number of approaches to this
-problem, but if you're here, I'll skip the explanation and assume that you
-already understand roles, but would like to know why we don't follow the
-L<Moose::Role> specification.
+serialize themselves as JSON even though neither class naturally has anyting
+to do with JSON (for example, C<Person> and C<Order> classes).  There are a
+number of approaches to this problem but if you're here I'll skip the
+explanation and assume that you already understand roles and would like to
+know why we don't follow the L<Moose::Role> specification.
 
 As you already probably know, roles allow you to state that your class "DOES"
-some behaviour, and allows you to exclude or alias bits of pieces of the roles
-you're including.  The original specification of traits made it clear that
-this was to be done in such a fashion that no matter how you grouped the
-traits, or in which order you used them, the outcome behavior would be the
+some behaviour, and allows you to exclude or alias bits and pieces of the
+roles you're including.  The original specification of traits made it clear
+that this was to be done in such a fashion that no matter how you grouped the
+traits or in which order you used them, the outcome behavior would be the
 same. That's why we have subtle but forward-compatible differences with
 L<Moose::Role>.
 
@@ -122,8 +124,9 @@ L<http://blogs.perl.org/users/ovid/2010/12/rolebasic---when-you-only-want-roles.
 
 If you run this code, it might print 4.5, but it might print 5.5. As with
 mixins and multiple inheritance, you have no way of knowing the exact
-behaviour here. This is not an issue with L<Role::Basic> because we do not
-allow method modifiers.  If you think you need them, please consider L<Moose>.
+behaviour which will be exhibited short of running the code. No introspection
+will help. This is not an issue with L<Role::Basic> because we do not allow
+method modifiers.  If you think you need them, please consider L<Moose>.
 
 =head3 Associative
 
@@ -134,8 +137,9 @@ means that:
 
     (A + B) + C = A + (B + C)
 
-In Moose, if a role providing method I<M> consumes B<one> other role which
-also provides method I<M>, we have a conflict:
+Moose is associative if and only if you do not have multiple methods with the
+same name.  In Moose, if a role providing method I<M> consumes B<one> other
+role which also provides method I<M>, we have a conflict:
 
     package Some::Role;
     use Moose::Role;
@@ -154,8 +158,8 @@ also provides method I<M>, we have a conflict:
     my $o = Some::Class->new;
     print $o->bar;
 
-However, if the role consumes B<two> or more other roles which provide the same
-method, we don't have a conflict:
+However, if the role consumes B<two or more> other roles which provide the same
+method, we I<don't> have a conflict:
 
     package Some::Role;
     use Moose::Role;
@@ -179,9 +183,13 @@ method, we don't have a conflict:
     print $o->bar;
 
 This is because, in Moose, when you have two or more role consumed, any
-conflicting methods are excluded and considered to be requirements. This makes
-roles easy to use at times, but it means that the following three groups of
-roles are not guaranteed to provide the same behavior:
+conflicting methods are excluded and considered to be requirements.
+
+See "Moose::Role composition edge cases" for more explanation:
+L<http://search.cpan.org/~drolsky/Moose-1.21/lib/Moose/Spec/Role.pod#Composition_Edge_Cases>.
+
+This makes roles easy to use at times, but it means that the following three
+groups of roles are not guaranteed to provide the same behavior:
 
  RoleA does RoleB, RoleC
  RoleB does RoleA, RoleC
@@ -190,12 +198,16 @@ roles are not guaranteed to provide the same behavior:
 Further, you as a developer have no way of knowing that we have had methods
 silently excluded without reading all of the code.
 
-For L<Role::Basic>, if C<RoleA>, C<RoleB>, and C<RoleC> all provide method
-I<M>, you are guaranteed to get a conflict at composition time.
+For L<Role::Basic> there are no edge cases. If C<RoleA>, C<RoleB>, and
+C<RoleC> all provide method I<M>, you are guaranteed to get a conflict at
+composition time and must specifically address the problem. This addresses the
+associative issue because strictly speaking, a trait is merely a bundle of
+services provided, not its name.  Thus, a trait with its C<foo> method
+excluded is not the same as itself without the C<foo> method excluded.
 
 =head3 Benefits of associative and commutative behaviour
 
-While we recognize that not everyone would be happy with the decisions we have
+While we recognize that not everyone will be happy with the decisions we have
 made, we have several benefits here:
 
 =over 4
@@ -210,10 +222,10 @@ made, we have several benefits here:
 
 =head1 CONCLUSION
 
-The primary goal of L<Role::Basic> is to provide traits in a simple and
-I<safe> manner. We are I<huge> fans of L<Moose> and L<Moose::Role> and suggest
-that everyone check them out. The decision of L<Moose::Role> to deviate from
-the  "associative" and "commutative" deviations from the original traits model
-is, in our experience, less likely to occur with roles than with mixins and
+The primary goal of L<Role::Basic> is to provide traits in a simple and safe
+manner. We are I<huge> fans of L<Moose> and L<Moose::Role> and suggest that
+everyone check them out. The decision of L<Moose::Role> to deviate from the
+"associative" and "commutative" deviations from the original traits model is,
+in our experience, less likely to occur with roles than with mixins and
 inhertance, so please do not take this as an indictment, but rather in the
 spirit of TIMTOWTDI.

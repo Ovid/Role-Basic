@@ -2,6 +2,9 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
+0.0801
+        - Aliasing $old to $new should fulfill requirements for $new, if any
+
 0.08    Jan 22, 2011
         - Methods which point to the same reference do not conflict (because
           they're the same method).

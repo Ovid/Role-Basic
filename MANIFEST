@@ -1,6 +1,7 @@
 Build.PL
 Changes
 lib/Role/Basic.pm
+lib/Role/Basic/Philosophy.pod
 MANIFEST
 README
 t/00-load.t

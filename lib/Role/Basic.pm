@@ -259,7 +259,7 @@ sub _add_role_methods_to_target {
     my $stash = do { no strict 'refs'; \%{"${target}::"} };
     while ( my ( $old_method, $new_method ) = each %$aliases ) {
         if ( !$is_loaded ) {
-            if ( exists $code_for->{$new_method} ) {
+            if ( exists $code_for->{$new_method} && !$is_excluded->{$new_method} ) {
                 Carp::confess(
     "Cannot alias '$old_method' to existing method '$new_method' in $role"
                 );
@@ -277,10 +277,13 @@ sub _add_role_methods_to_target {
         }
     }
 
+    my %was_aliased = reverse %$aliases;
     foreach my $method ( keys %$code_for ) {
         if ( $is_excluded->{$method} ) {
-            delete $code_for->{$method};
-            $class->add_to_requirements( $target, $method );
+            unless ($was_aliased{$method}) {
+                delete $code_for->{$method};
+                $class->add_to_requirements( $target, $method );
+            }
             next;
         }
 

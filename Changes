@@ -3,6 +3,7 @@ Revision history for Role-Basic
 The token "[!Moose]" documents features which diverge from Moose.
 
 0.0801
+        - Add a "philosophy" document.
         - Aliasing $old to $new should fulfill requirements for $new, if any
 
 0.08    Jan 22, 2011

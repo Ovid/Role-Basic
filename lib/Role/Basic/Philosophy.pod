@@ -1,0 +1,219 @@
+=head1 NAME
+
+Role::Basic::Philosophy - Why Role::Basic exists.
+
+=head1 RATIONALE
+
+Note: the words "trait" and "role" will be used interchangeably throughout
+this documentation.
+
+After years of using roles, your author has found that many people would be
+happy to use roles but are not willing/comfortable with using L<Moose>.  This
+module implements roles and nothing else. It does so in a (relatively) simple
+bit of code.  However, you should be aware that there are some differences
+between L<Role::Basic> and L<Moose::Role>.
+
+L<Moose> is a fantastic technology and your author is quite happy with it. He
+urges you to check it out and perhaps even consider L<Role::Basic> a
+"stepping-stone" to L<Moose>.  However, after an informal poll with many
+repondents replying on blogs.perl.org, Twitter, Facebook and private email
+I<unanimously> saying they wanted this module for roles and not as a
+stepping-stone to Moose, your author took the liberty of deciding to implement
+I<traits> in a rather faithful fashion, rather than strictly adher to the
+design of L<Moose::Role>.  For differences, L<Role::Basic> intends to be more
+restrictive when syntax is the same. This allows an easier migration to
+L<Moose::Role> when the time is right.
+
+=head1 TRAITS
+
+As most of you probably know, roles are the Perl implmentation of traits,
+L<http://scg.unibe.ch/research/traits/>.  (The name "role" was chosen because
+"trait" was already used in Perl 6.)  In particular, we direct you to two
+papers, both of which are easy to read:
+
+=over 4
+
+=item * L<http://scg.unibe.ch/scgbib?_s=tgXJjGrs0380ejY6&_k=Swgdwx_C&query=nathanael+traits+composable+units+ecoop&display=abstract&_n&19>
+
+The seminal "traits paper" which much of the documentation refers to.
+
+=item * L<http://scg.unibe.ch/scgbib?_s=tgXJjGrs0380ejY6&_k=Swgdwx_C&query=traits+the+formal+model&display=abstract&_n&23>
+
+"Traits: The Formal Model".
+
+While less well-known, this relatively easy to read paper outlines the
+mathematical underpinnings of traits and explains several design decisions
+taken here.
+
+=back
+
+It is important to refer back to those papers because L<Role::Basic> attempts
+to implements traits as described in the research, whereas L<Moose::Role>
+attempts to implement something very similar to traits, but with more of a
+"Perlish" feel.  This is not intended as a criticism of L<Moose::Role>, but
+merely an attempt to alert the reader to key differences.
+
+=head2 The Basics
+
+Roles are simply bundles of behavior which classes may use. If you have two
+completely unrelated classes, your code may still require each of them to
+serialize themselves as JSON.  There are a number of approaches to this
+problem, but if you're here, I'll skip the explanation and assume that you
+already understand roles, but would like to know why we don't follow the
+L<Moose::Role> specification.
+
+As you already probably know, roles allow you to state that your class "DOES"
+some behaviour, and allows you to exclude or alias bits of pieces of the roles
+you're including.  The original specification of traits made it clear that
+this was to be done in such a fashion that no matter how you grouped the
+traits, or in which order you used them, the outcome behavior would be the
+same. That's why we have subtle but forward-compatible differences with
+L<Moose::Role>.
+
+=head3 Commutative
+
+The formal model
+(L<http://scg.unibe.ch/archive/papers/Scha02cTraitsModel.pdf>) states that
+trait composition must be commutative (section 3.4, proposition 1).  This
+means that:
+
+    (A + B) = (B + A)
+
+In other words, it should not matter what order you compose the traits in. It
+is well known that with both inheritance and mixins, this does not hold
+(making refactoring a dicey proposition at times), but when method modifiers
+are used with L<Moose::Role>, the same issues arises (from
+L<http://blogs.perl.org/users/ovid/2010/12/rolebasic---when-you-only-want-roles.html>):
+
+    {
+        package Some::Role;
+        use Moose::Role;
+        requires qw(some_method);
+
+        before some_method => sub {
+            my $self = shift;
+            $self->some_number( $self->some_number + 2 );
+        };
+    }
+    {
+        package Another::Role;
+        use Moose::Role;
+        requires qw(some_method);
+
+        before some_method => sub {
+            my $self = shift;
+            $self->some_number( $self->some_number / 2 );
+        };
+    }
+    {
+        package Some::Class;
+        use Moose;
+        my @roles =
+          int( rand(2) )
+          ? qw(Another::Role Some::Role)
+          : qw(Some::Role Another::Role);
+        with @roles;
+
+        has some_number => ( is => 'rw', isa => 'Num' );
+        sub some_method { print shift->some_number, $/ }
+    }
+    my $o = Some::Class->new( { some_number => 7 } );
+    $o->some_method;
+
+If you run this code, it might print 4.5, but it might print 5.5. As with
+mixins and multiple inheritance, you have no way of knowing the exact
+behaviour here. This is not an issue with L<Role::Basic> because we do not
+allow method modifiers.  If you think you need them, please consider L<Moose>.
+
+=head3 Associative
+
+The formal model
+(L<http://scg.unibe.ch/archive/papers/Scha02cTraitsModel.pdf>) states that
+trait composition must be associative (section 3.4, proposition 1).  This
+means that:
+
+    (A + B) + C = A + (B + C)
+
+In Moose, if a role providing method I<M> consumes B<one> other role which
+also provides method I<M>, we have a conflict:
+
+    package Some::Role;
+    use Moose::Role;
+    sub bar { __PACKAGE__ }
+
+    package Some::Other::Role;
+    use Moose::Role;
+    with 'Some::Role';
+    sub bar { __PACKAGE__ }
+
+    package Some::Class;
+    use Moose;
+    with 'Some::Other::Role';
+
+    package main;
+    my $o = Some::Class->new;
+    print $o->bar;
+
+However, if the role consumes B<two> or more other roles which provide the same
+method, we don't have a conflict:
+
+    package Some::Role;
+    use Moose::Role;
+    sub bar { __PACKAGE__ }
+
+    package Some::Other::Role;
+    use Moose::Role;
+    sub bar { __PACKAGE__ }
+
+    package Another::Role;
+    use Moose::Role;
+    with qw(Some::Role Some::Other::Role);
+    sub bar { __PACKAGE__ }
+
+    package Some::Class;
+    use Moose;
+    with 'Another::Role';
+
+    package main;
+    my $o = Some::Class->new;
+    print $o->bar;
+
+This is because, in Moose, when you have two or more role consumed, any
+conflicting methods are excluded and considered to be requirements. This makes
+roles easy to use at times, but it means that the following three groups of
+roles are not guaranteed to provide the same behavior:
+
+ RoleA does RoleB, RoleC
+ RoleB does RoleA, RoleC
+ RoleC does RoleA, RoleB
+
+Further, you as a developer have no way of knowing that we have had methods
+silently excluded without reading all of the code.
+
+For L<Role::Basic>, if C<RoleA>, C<RoleB>, and C<RoleC> all provide method
+I<M>, you are guaranteed to get a conflict at composition time.
+
+=head3 Benefits of associative and commutative behaviour
+
+While we recognize that not everyone would be happy with the decisions we have
+made, we have several benefits here:
+
+=over 4
+
+=item * We adhere to the formal definition of traits
+
+=item * Ordering and grouping of traits does not alter their behavior
+
+=item * We're forward-compatible with L<Moose::Role>
+
+=back
+
+=head1 CONCLUSION
+
+The primary goal of L<Role::Basic> is to provide traits in a simple and
+I<safe> manner. We are I<huge> fans of L<Moose> and L<Moose::Role> and suggest
+that everyone check them out. The decision of L<Moose::Role> to deviate from
+the  "associative" and "commutative" deviations from the original traits model
+is, in our experience, less likely to occur with roles than with mixins and
+inhertance, so please do not take this as an indictment, but rather in the
+spirit of TIMTOWTDI.

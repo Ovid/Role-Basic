@@ -111,6 +111,7 @@ ok !$object->DOES('My::Does::Basic1'),
     {
         package Class::With::ImportingRole2;
         use Role::Basic 'with';
+$ENV{DEBUG} = 1;
         with 'Role::WithImportsOnceRemoved';
         sub new { bless {} => shift }
     }

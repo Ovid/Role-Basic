@@ -12,10 +12,8 @@ use Data::Dumper ();
 
 our $VERSION = '0.08';
 
-my (
-    %IS_ROLE,     %REQUIRED_BY, %HAS_ROLES,
-    %ROLE_ALLOWS, %ALLOWED_BY,  %PROVIDED_BY
-);
+# eventually clean these up
+my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ALLOWED_BY, %PROVIDES );
 
 sub import {
     my $class  = shift;
@@ -41,7 +39,6 @@ sub import {
 
         # this is a role which allows methods from a foreign class
         my $foreign_class = $_[1];
-        $ROLE_ALLOWS{$target} = $foreign_class;
         push @{ $ALLOWED_BY{$foreign_class} } => $target;
         $class->_declare_role($target);
     }
@@ -103,6 +100,7 @@ sub _roles {
 
 sub apply_roles_to_package {
     my ( $class, $target, @roles ) = @_;
+
     if ( $HAS_ROLES{$target} ) {
         Carp::confess("with() may not be called more than once for $target");
     }
@@ -110,14 +108,6 @@ sub apply_roles_to_package {
     my ( %provided_by, %requires );
 
     my %is_applied;
-
-    foreach my $i ( 0 .. $#roles ) {
-        my $role = $roles[$i];
-        next if ref $role;
-        my $modifiers = ref $roles[ $i + 1 ] ? $roles[ $i + 1 ] : {};
-        my $role_name = $class->_get_role_name( $role, $modifiers );
-        $is_applied{$role_name} = 1;
-    }
 
     # these are roles which a class does not use directly, but are contained in
     # the roles the class consumes.
@@ -130,6 +120,7 @@ sub apply_roles_to_package {
         my $role_modifiers = shift @roles if ref $roles[0];
         $role_modifiers ||= {};
         my $role_name = $class->_get_role_name( $role, $role_modifiers );
+        $is_applied{$role_name} = 1;
         $class->_load_role( $role, $role_modifiers->{'-version'} );
 
         # XXX this is awful. Don't tell anyone I wrote this
@@ -155,19 +146,20 @@ sub apply_roles_to_package {
             $class->add_to_requirements( $target,
                 $class->get_required_by($role) );
         }
+
         while ( my ( $method, $data ) = each %$role_methods ) {
-            push @{ $provided_by{$method} } => $data;
+            $PROVIDES{$role_name}{$method} ||= $data;
         }
 
         # any extra roles contained in applied roles must be added
         # (helps with conflict resolution)
+        $contained_roles{$role_name} = 1;
         foreach my $contained_role ( $class->_roles($role) ) {
             next if $is_applied{$contained_role};
             $contained_roles{$contained_role} = 1;
             $is_applied{$contained_role}      = 1;
         }
     }
-
     foreach my $contained_role (keys %contained_roles) {
         my ( $role, $modifiers ) = split /-/ => $contained_role, 2;
         foreach my $method ( $class->get_required_by($role) ) {
@@ -175,9 +167,9 @@ sub apply_roles_to_package {
         }
         # a role is not a name. A role is a role plus its alias/exclusion. We
         # now store those in $HAS_ROLE so pull from them
-        if ( my $methods = $PROVIDED_BY{$contained_role} ) {
+        if ( my $methods = $PROVIDES{$contained_role} ) {
             foreach my $method (keys %$methods) {
-                push @{ $provided_by{$method} } => { source => $role };
+                push @{ $provided_by{$method} } => $methods->{$method};
             }
         }
     }
@@ -194,8 +186,20 @@ sub _uniq (@) {
 sub _check_conflicts {
     my ( $class, $target, $provided_by ) = @_;
     my @errors;
-    while ( my ( $method, $roles ) = each %$provided_by ) {
-        my @sources = _uniq map { $_->{source} } @$roles;
+    foreach my $method (keys %$provided_by) {
+        my $sources = $provided_by->{$method};
+        next if 1 == @$sources;
+
+        my %seen;
+        # what we're doing here is checking to see if code references point to
+        # the same reference. If they do, they can't possibly be in conflict
+        # because they're the same method. This seems strange, but it does
+        # follow the original spec.
+        my @sources = do {
+            no warnings 'uninitialized';
+            map    { $_->{source} }
+              grep { !$seen{ $_->{code} }++ } @$sources;
+        };
 
         # more than one role provides the method and it's not overridden by
         # the consuming class having that method
@@ -220,7 +224,7 @@ sub _check_requirements {
     my @errors;
     foreach my $method ( keys %$requires ) {
         unless ( $target->can($method) ) {
-            my $roles = join '|' => sort @{ $requires->{$method} };
+            my $roles = join '|' => _uniq sort @{ $requires->{$method} };
             push @errors =>
 "'$roles' requires the method '$method' to be implemented by '$target'";
         }
@@ -239,13 +243,14 @@ sub _get_role_name {
 }
 
 sub _add_role_methods_to_target {
-    my ( $class, $role, $target, $role_modifiers, $dont_apply ) = @_;
+    my ( $class, $role, $target, $role_modifiers) = @_;
 
     my $copied_modifiers = Storable::dclone($role_modifiers);
     my $role_name = $class->_get_role_name( $role, $copied_modifiers );
 
     my $target_methods = $class->_get_methods($target);
-    my $code_for       = $class->_get_methods($role);
+    my $is_loaded      = $PROVIDES{$role_name};
+    my $code_for       = $is_loaded || $class->_get_methods($role);
 
     delete $role_modifiers->{'-version'};
     my ( $is_excluded, $aliases ) =
@@ -253,13 +258,15 @@ sub _add_role_methods_to_target {
 
     my $stash = do { no strict 'refs'; \%{"${target}::"} };
     while ( my ( $old_method, $new_method ) = each %$aliases ) {
-        if ( exists $code_for->{$new_method} ) {
-            Carp::confess(
-"Cannot alias '$old_method' to existing method '$new_method' in $role"
-            );
-        }
-        else {
-            $code_for->{$new_method} = $code_for->{$old_method};
+        if ( !$is_loaded ) {
+            if ( exists $code_for->{$new_method} ) {
+                Carp::confess(
+    "Cannot alias '$old_method' to existing method '$new_method' in $role"
+                );
+            }
+            else {
+                $code_for->{$new_method} = $code_for->{$old_method};
+            }
         }
 
         # We do this because $target->can($new_method) wouldn't be appropriate
@@ -290,14 +297,10 @@ sub _add_role_methods_to_target {
             }
             next;
         }
-
-        unless ($dont_apply) {
-            # XXX we're going to handle this ourselves
-            no strict 'refs';
-            no warnings 'redefine';
-            *{"${target}::$method"} = $code_for->{$method}{code};
-            $PROVIDED_BY{$role_name}{$method} = 1;
-        }
+        # XXX we're going to handle this ourselves
+        no strict 'refs';
+        no warnings 'redefine';
+        *{"${target}::$method"} = $code_for->{$method}{code};
     }
     $HAS_ROLES{$target}{$role} = $copied_modifiers;
     return $code_for;
@@ -343,23 +346,27 @@ sub _get_methods {
 
     my $stash = do { no strict 'refs'; \%{"${target}::"} };
 
-    my %methods =
-      map {
-        local $_ = $_;
-        my $code = *$_{CODE};
-        s/^\*$target\:://;
-        $_ => { code => $code, source => _sub_package($code) }
-      }
-      grep {
-        !( ref eq 'SCALAR' )    # not a scalar
-          && *$_{CODE}          # actually have code
-          && _is_valid_method( $target, *$_{CODE} )
-      } values %$stash;
+    my %methods;
+    foreach my $item ( values %$stash ) {
+
+        next unless my $code = _get_valid_method( $target, $item );
+
+        # this prevents a "modification of read-only value" error.
+        my $name = $item;
+        $name =~ s/^\*$target\:://;
+        my $source = _sub_package($code);
+        $methods{$name} = {
+            code   => $code,
+            source => $source,
+        };
+    }
     return \%methods;
 }
 
-sub _is_valid_method {
-    my ( $target, $code ) = @_;
+sub _get_valid_method {
+    my ( $target, $item ) = @_;
+    my $code = *$item{CODE} or return;
+    return if ref $item eq 'SCALAR';
 
     my $source = _sub_package($code) or return;
 
@@ -375,13 +382,10 @@ sub _is_valid_method {
     
     unless ($is_valid) {
         foreach my $role (@{ $ALLOWED_BY{$source} }) {
-            return 1 if $target->DOES($role);
+            return $code if $target->DOES($role);
         }
-        return 1
-          if exists $ROLE_ALLOWS{$target} && $ROLE_ALLOWS{$target} eq $source;
     }
-    return $is_valid;
-
+    return $is_valid ? $code : ();
 }
 
 sub _sub_package {

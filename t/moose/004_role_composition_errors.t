@@ -13,7 +13,7 @@ use MyTests tests => 21;
     requires 'foo';
 }
 
-is_deeply( [ Role::Basic->get_requirements('Foo::Role') ],
+is_deeply( [ Role::Basic->get_required_by('Foo::Role') ],
     ['foo'], '... the Foo::Role has a required method (foo)' );
 
 # classes which does not implement required method
@@ -52,7 +52,7 @@ is_deeply( [ Role::Basic->get_requirements('Foo::Role') ],
 # dynamically, so sharing the requirements on a class basis is bad. We don't
 # allow this in Role::Basic, so it's OK. 
 is_deeply(
-    [ sort Role::Basic->get_requirements('Bar::Role') ],
+    [ sort Role::Basic->get_required_by('Bar::Role') ],
     ['foo'],
     '... the Bar::Role has inherited the required method from Foo::Role'
 );
@@ -67,7 +67,7 @@ is_deeply(
 }
 
 is_deeply(
-    [ Role::Basic->get_requirements('Baz::Role') ],
+    [ Role::Basic->get_required_by('Baz::Role') ],
     ['foo'],
     '... the Baz::Role has inherited the required method from Foo::Role'
 );

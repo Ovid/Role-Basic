@@ -17,7 +17,6 @@ use MyTests tests => 17;
     package My::Class;
     use Role::Basic 'with';
     sub new { bless {} => shift }
-
     with 'My::Role' => { -rename => { foo => 'baz', bar => 'gorch' }, };
 }
 
@@ -69,5 +68,3 @@ use MyTests tests => 17;
     is($x->baz, 'FOO', '... got the right value');
     is($x->gorch, 'BAR', '... got the right value');
 }
-
-

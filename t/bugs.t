@@ -23,18 +23,16 @@ use MyTests tests => 8;
     with 'RoleC';
     sub foo { 'foo' }
 }
-eval <<'END';
-package Foo;
-use strict;
-use warnings;
-use Role::Basic 'with';
-with 'RoleA', 'RoleB';
-sub new { bless {} => shift }
-END
-my $error = $@;
-ok !$error,
-  'Composing multiple roles which use the same role should not have conflicts'
-  or diag $error;
+{
+    package Foo;
+    use strict;
+    use warnings;
+    use Role::Basic 'with';
+    ::is( ::exception {
+        with 'RoleA', 'RoleB';
+    }, undef, 'Composing multiple roles which use the same role should not have conflicts' );
+    sub new { bless {} => shift }
+}
 
 my $object = Foo->new;
 foreach my $method (qw/foo bar baz/) {

@@ -3,6 +3,8 @@ Revision history for Role-Basic
 The token "[!Moose]" documents features which diverge from Moose.
 
 0.08
+        - Methods which point to the same reference do not conflict (because
+          they're the same method).
         - [!Moose] Excluded methods are now required. See
           [https://rt.cpan.org/Public/Bug/Display.html?id=45591] in Moose.
         - [!Moose] Added -rename, a combination of -alias and -excludes.

@@ -106,7 +106,7 @@ foreach my $foo ( $foo, $foobar ) {
         '... and instance of FooBarClass DOES not do OtherRole' );
 
     for my $method (qw/bar baz foo boo goo/) {
-        can_ok( $foo, $method );
+        ok $foo->can($method), "$foo should be able to do $method";
     }
 
     is( $foo->foo, 'FooRole::foo', '... got the right value of foo' );

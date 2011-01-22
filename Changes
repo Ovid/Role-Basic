@@ -2,7 +2,7 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
-0.08
+0.08    Jan 22, 2011
         - Methods which point to the same reference do not conflict (because
           they're the same method).
         - [!Moose] Excluded methods are now required. See

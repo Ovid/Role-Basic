@@ -1,4 +1,6 @@
-package Try::Tiny;
+# PAUSE doesn't seem to case about this in t/lib, but just in case ...
+package # Hide from PAUSE
+    Try::Tiny;
 
 use strict;
 #use warnings;

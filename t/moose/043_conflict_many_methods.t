@@ -2,8 +2,7 @@
 use strict;
 use warnings;
 
-use MyTests skip_all => 'Not yet converted';
-
+use MyTests tests => 3;
 
 {
     package Bomb;
@@ -33,16 +32,20 @@ use MyTests skip_all => 'Not yet converted';
     package PracticalJoke;
     use Role::Basic 'with';
 
-    ::like( ::exception {
-        with 'Bomb', 'Spouse';
-    }, qr/Due to method name conflicts in roles 'Bomb' and 'Spouse', the methods 'explode' and 'fuse' must be implemented or excluded by 'PracticalJoke'/ );
+    my $exception = ::exception { with 'Bomb', 'Spouse' };
+    ::like( $exception,
+qr/Due to a method name conflict in roles 'Bomb' and 'Spouse', the method 'fuse' must be implemented or excluded by 'PracticalJoke'/
+    );
 
+    ::like $exception, qr/Due to a method name conflict in roles 'Bomb' and 'Spouse', the method 'explode' must be implemented or excluded by 'PracticalJoke'/,
+        '... and all methods will be listed in the exception';
+
+    package PracticalJoke2;
+    use Role::Basic 'with';
     ::like( ::exception {
         with (
             'Bomb', 'Spouse',
             'Caninish', 'Treeve',
         );
-    }, qr/Due to a method name conflict in roles 'Caninish' and 'Treeve', the method 'bark' must be implemented or excluded by 'PracticalJoke'/ );
+    }, qr/Due to a method name conflict in roles 'Caninish' and 'Treeve', the method 'bark' must be implemented or excluded by 'PracticalJoke2'/ );
 }
-
-

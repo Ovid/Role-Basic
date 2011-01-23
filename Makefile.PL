@@ -2,6 +2,9 @@
 use ExtUtils::MakeMaker;
 WriteMakefile
 (
+  'test' => {
+              'TESTS' => 't/*.t t/lib/*.t t/lib/My/*.t t/lib/My/Does/*.t t/lib/Try/*.t t/moose/*.t'
+            },
   'PL_FILES' => {},
   'INSTALLDIRS' => 'site',
   'NAME' => 'Role::Basic',

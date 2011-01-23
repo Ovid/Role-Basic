@@ -12,9 +12,10 @@ my $builder = Module::Build->new(
     # we could probably handle a somewhat older version, but this is six years
     # old and shouldn't be too problematic (we hope). This does mean that if
     # your perl < 5.7.3, it's possible you will have to install this.
-    requires           => { 'Storable' => '2.15', },
-    add_to_cleanup     => ['Role-Basic-*'],
-    create_makefile_pl => 'traditional',
+    requires             => { 'Storable' => '2.15', },
+    add_to_cleanup       => ['Role-Basic-*'],
+    create_makefile_pl   => 'traditional',
+    recursive_test_files => 1,
     meta_merge =>
       { resources => { repository => 'https://github.com/Ovid/Role-Basic' } },
 );

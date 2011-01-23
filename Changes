@@ -2,7 +2,10 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
-0.0801
+0.0802  Jan 23, 2011
+        - Ensure that all tests which use MyTests have the correct lib.
+
+0.0801  Jan 23, 2011
         - Make sure people can run all of the tests, not just the top-level
         - Bugfix: -rename => { x => y, y => x } now works
         - Add a "philosophy" document.

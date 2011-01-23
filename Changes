@@ -3,6 +3,7 @@ Revision history for Role-Basic
 The token "[!Moose]" documents features which diverge from Moose.
 
 0.0801
+        - Bugfix: -rename => { x => y, y => x } now works
         - Add a "philosophy" document.
         - Aliasing $old to $new should fulfill requirements for $new, if any
 

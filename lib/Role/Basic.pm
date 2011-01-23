@@ -248,9 +248,10 @@ sub _add_role_methods_to_target {
     my $copied_modifiers = Storable::dclone($role_modifiers);
     my $role_name = $class->_get_role_name( $role, $copied_modifiers );
 
-    my $target_methods = $class->_get_methods($target);
-    my $is_loaded      = $PROVIDES{$role_name};
-    my $code_for       = $is_loaded || $class->_get_methods($role);
+    my $target_methods    = $class->_get_methods($target);
+    my $is_loaded         = $PROVIDES{$role_name};
+    my $code_for          = $is_loaded || $class->_get_methods($role);
+    my %original_code_for = %$code_for;
 
     delete $role_modifiers->{'-version'};
     my ( $is_excluded, $aliases ) =
@@ -265,7 +266,7 @@ sub _add_role_methods_to_target {
                 );
             }
             else {
-                $code_for->{$new_method} = $code_for->{$old_method};
+                $code_for->{$new_method} = $original_code_for{$old_method};
             }
         }
 
@@ -283,8 +284,8 @@ sub _add_role_methods_to_target {
             unless ($was_aliased{$method}) {
                 delete $code_for->{$method};
                 $class->add_to_requirements( $target, $method );
+                next;
             }
-            next;
         }
 
         if ( exists $target_methods->{$method} ) {

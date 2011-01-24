@@ -2,6 +2,9 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
+0.0803  Jan 24, 2011
+        - Add MyTests to the Manifest (oops)
+
 0.0802  Jan 23, 2011
         - Ensure that all tests which use MyTests have the correct lib.
 

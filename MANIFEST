@@ -13,6 +13,7 @@ t/exceptions.t
 t/internals.t
 t/lib/My/Does/Basic.pm
 t/lib/My/Example.pm
+t/lib/MyTests.pm
 t/lib/TestMethods.pm
 t/moose/003_apply_role.t
 t/moose/004_role_composition_errors.t

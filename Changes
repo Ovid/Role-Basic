@@ -2,6 +2,9 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
+0.10    Jan 29, 2011
+        - Bump up version number for "beta" release. No functional changes.
+
 0.0804  Jan 25, 2011
         - Finally ran ./Build manifest like a good boy.
 

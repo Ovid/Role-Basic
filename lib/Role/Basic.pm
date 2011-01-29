@@ -10,7 +10,7 @@ use Storable ();
 use Carp ();
 use Data::Dumper ();
 
-our $VERSION = '0.0804';
+our $VERSION = '0.10';
 
 # eventually clean these up
 my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ALLOWED_BY, %PROVIDES );
@@ -449,7 +449,7 @@ Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
-Version 0.0804
+Version 0.10
 
 =head1 SYNOPSIS
 
@@ -478,10 +478,11 @@ In your class:
 
     sub as_hash { ... } # because the role requires it
 
-=head1 ALPHA CODE
+=head1 BETA CODE
 
-This code should not be considered production ready. The basic features are
-there, but a few issues are still being fleshed out.
+This code appears to be stable and currently passes over 300 tests. We've not
+(yet) heard of any bugs. There are no functional changes with this release.
+It's merely here to let early-adopters know it's safe to give it a spin.
 
 =head1 DESCRIPTION
 

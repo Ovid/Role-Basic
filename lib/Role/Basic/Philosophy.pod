@@ -58,7 +58,7 @@ merely an attempt to alert the reader to key differences.
 
 Roles are simply bundles of behavior which classes may use. If you have two
 completely unrelated classes, your code may still require each of them to
-serialize themselves as JSON even though neither class naturally has anyting
+serialize themselves as JSON even though neither class naturally has anything
 to do with JSON (for example, C<Person> and C<Order> classes).  There are a
 number of approaches to this problem but if you're here I'll skip the
 explanation and assume that you already understand roles and would like to
@@ -182,7 +182,7 @@ method, we I<don't> have a conflict:
     my $o = Some::Class->new;
     print $o->bar;
 
-This is because, in Moose, when you have two or more role consumed, any
+This is because, in Moose, when you have two or more roles consumed, any
 conflicting methods are excluded and considered to be requirements.
 
 See "Moose::Role composition edge cases" for more explanation:

@@ -369,8 +369,8 @@ sub _get_methods {
 
 sub _get_valid_method {
     my ( $target, $item ) = @_;
-    my $code = *$item{CODE} or return;
     return if ref $item eq 'SCALAR';
+    my $code = *$item{CODE} or return;
 
     my $source = _sub_package($code) or return;
 

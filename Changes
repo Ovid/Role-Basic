@@ -2,6 +2,9 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
+0.11    Feb 11, 2011
+        - Allow constants in roles. Thanks to Marcel Grünauer.
+
 0.10    Jan 29, 2011
         - Bump up version number for "beta" release. No functional changes.
 

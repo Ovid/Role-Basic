@@ -10,7 +10,7 @@ use Storable ();
 use Carp ();
 use Data::Dumper ();
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 # eventually clean these up
 my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ALLOWED_BY, %PROVIDES );
@@ -449,7 +449,7 @@ Role::Basic - Just roles. Nothing else.
 
 =head1 VERSION
 
-Version 0.12
+Version 0.13
 
 =head1 SYNOPSIS
 
@@ -801,9 +801,17 @@ L<http://search.cpan.org/dist/Role-Basic/>
 
 =back
 
-=head1 ACKNOWLEDGEMENTS
+=head1 SEE ALSO
 
-Nicked some code from Moo's Role::Tiny.
+=over 4
+
+=item * L<Role::Tiny>
+
+=item * L<Moose::Role>
+
+=item * L<Mouse::Role>
+
+=back
 
 =head1 LICENSE AND COPYRIGHT
 

@@ -2,8 +2,12 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
+0.13    Apr 3, 2012
+        - Add SEE ALSO to the docs to let people know what the main
+          alternatives are.
+
 0.12    Apr 17, 2011
-        - Fixed a bug where constants could confused _get_valid_method. Thanks
+        - Fixed a bug where constants could confuse _get_valid_method. Thanks
           to Marcel Grünauer.
 
 0.11    Feb 11, 2011

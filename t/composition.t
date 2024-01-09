@@ -38,7 +38,7 @@ ok !$@, 'We should be able to use two roles with the same requirements'
     or die $@;
 
 is_deeply [ sort My::Class1->ROLES ], [qw/My::Does::Basic1 My::Does::Basic2/],
-  'DOES reports roles in array context';
+  'ROLES reports roles in array context';
 
 {
 
@@ -76,7 +76,7 @@ ok My::Class2->DOES('My::Does::Basic2'),
 ok !My::Class2->DOES('My::Does::Basic1'),
   '... but not roles which it never consumed';
 is_deeply [sort My::Class2->ROLES], [qw/My::Does::Basic2 My::Does::Basic3/],
-  'DOES reports roles in array context';
+  'ROLES reports roles in array context';
 
 my $object = My::Class2->new;
 can_ok $object, 'DOES';
@@ -86,7 +86,7 @@ ok $object->DOES('My::Does::Basic2'),
 ok !$object->DOES('My::Does::Basic1'),
   '... but not roles which it never consumed';
 is_deeply [sort $object->ROLES], [qw/My::Does::Basic2 My::Does::Basic3/],
-  'Instance DOES reports roles in array context';
+  'Instance ROLES reports roles in array context';
 
 {
     {

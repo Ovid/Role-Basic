@@ -622,7 +622,7 @@ Every role "DOES" itself.
 
 =item * C<ROLES>
 
-Returns the list of all roles consumed by the class or role, including itself.
+Returns an unordered list of roles consumed by the class or role, including itself.
 
 =back
 

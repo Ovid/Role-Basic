@@ -2,6 +2,10 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
+0.14    Feb 18, 2024
+        - Applied haarg's fix which corrected for a BBC (blead-breaks Perl)
+          bug. Thanks, haarg!
+
 0.13    Apr 3, 2012
         - Add SEE ALSO to the docs to let people know what the main
           alternatives are.

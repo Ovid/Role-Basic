@@ -10,7 +10,7 @@ use Storable ();
 use Carp ();
 use Data::Dumper ();
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 # eventually clean these up
 my ( %IS_ROLE, %REQUIRED_BY, %HAS_ROLES, %ALLOWED_BY, %PROVIDES );

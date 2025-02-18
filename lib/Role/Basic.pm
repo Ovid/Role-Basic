@@ -30,6 +30,11 @@ sub import {
         return 1 if $class_or_role eq $role;
         return exists $HAS_ROLES{$class_or_role}{$role} ? 1 : 0;
     };
+    *{ _getglob "${target}::ROLES" } = sub {
+        my ( $proto ) = @_;
+        my $class_or_role = ref $proto || $proto;
+        return keys %{$HAS_ROLES{$class_or_role} // {} }
+    };
     if ( 1 == @_ && 'with' eq $_[0] ) {
 
         # this is a class which is consuming roles
@@ -615,6 +620,10 @@ Returns true if the class or role consumes a role of the given name:
  }
 
 Every role "DOES" itself.
+
+=item * C<ROLES>
+
+Returns an unordered list of roles consumed by the class or role, including itself.
 
 =back
 

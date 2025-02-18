@@ -2,6 +2,9 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
+0.14
+        - New ROLES() method returning class/role composition.
+
 0.13    Apr 3, 2012
         - Add SEE ALSO to the docs to let people know what the main
           alternatives are.

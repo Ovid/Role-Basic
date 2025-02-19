@@ -2,14 +2,17 @@ Revision history for Role-Basic
 
 The token "[!Moose]" documents features which diverge from Moose.
 
-0.15    Feb 18, 2024
+0.16    Feb 19, 2025
+        - Fix metadata information (abstract) and remove Try::Tiny dependency.
+
+0.15    Feb 18, 2025
         - Bump version number to work around possible PAUSE bug:
         Duplicate entry 'O/OV/OVID/Role-Basic-0.14.tar.gz' for key 'PRIMARY'
         1739891425 [Tue Feb 18 15:10:25 2025 UTC]
 
         I had not previously uploaded the file.
 
-0.14    Feb 18, 2024
+0.14    Feb 18, 2025
         - Applied haarg's fix which corrected for a BBC (blead-breaks Perl)
           bug. Thanks, haarg!
 

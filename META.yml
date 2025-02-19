@@ -3,22 +3,24 @@ abstract: 'Just roles. Nothing else.'
 author:
   - "Curtis 'Ovid' Poe <ovid@cpan.org>"
 build_requires:
-  Test::More: 0
+  Test::More: '0'
 configure_requires:
-  Module::Build: 0.36
-generated_by: 'Module::Build version 0.3607'
+  Module::Build: '0.42'
+dynamic_config: 1
+generated_by: 'Module::Build version 0.4234, CPAN::Meta::Converter version 2.150010'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
+  version: '1.4'
 name: Role-Basic
 provides:
   Role::Basic:
     file: lib/Role/Basic.pm
-    version: 0.12
+    version: '0.16'
 requires:
-  Storable: 2.15
+  Storable: '2.15'
 resources:
   license: http://dev.perl.org/licenses/
   repository: https://github.com/Ovid/Role-Basic
-version: 0.12
+version: '0.16'
+x_serialization_backend: 'CPAN::Meta::YAML version 0.018'

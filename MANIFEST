@@ -17,7 +17,6 @@ t/lib/My/Does/Basic.pm
 t/lib/My/Example.pm
 t/lib/MyTests.pm
 t/lib/TestMethods.pm
-t/lib/Try/Tiny.pm
 t/moose/003_apply_role.t
 t/moose/004_role_composition_errors.t
 t/moose/005_role_conflict_detection.t
@@ -31,3 +30,4 @@ t/moose/043_conflict_many_methods.t
 xt/manifest.t
 xt/pod-coverage.t
 xt/pod.t
+META.json

@@ -4,7 +4,6 @@ use strict;
 use warnings;
 
 use Test::More ();
-use Try::Tiny;
 
 sub import {
     my $class  = shift;
@@ -27,16 +26,22 @@ sub import {
 sub exception (&) {
     my ($code) = @_;
 
-    return try {
+    my $result;
+    eval {
         $code->();
-        return undef;
+        $result = undef;
+        1;
     }
-    catch {
-        return $_ if $_;
-
-        my $problem = defined $_ ? 'false' : 'undef';
-        Carp::confess("$problem exception caught by Test::Fatal::exception");
+    or do {
+        if ( $result = $@ ) {
+            # do nothing
+        }
+        else {
+            my $problem = defined $_ ? 'false' : 'undef';
+            Carp::confess("$problem exception caught by Test::Fatal::exception");
+        }
     };
+    return $result;
 }
 
 1;
